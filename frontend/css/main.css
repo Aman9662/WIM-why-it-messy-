@@ -803,6 +803,8 @@ a:hover {
   position: relative;
   box-shadow: var(--shadow-xl);
   animation: modalIn 0.3s ease;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 @keyframes modalIn {
