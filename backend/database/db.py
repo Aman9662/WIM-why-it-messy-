@@ -7,7 +7,10 @@ import os
 from datetime import datetime
 from contextlib import closing
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "history.db")
+if os.environ.get("VERCEL"):
+    DB_PATH = "/tmp/history.db"
+else:
+    DB_PATH = os.path.join(os.path.dirname(__file__), "..", "history.db")
 
 
 def get_connection():
