@@ -44,14 +44,18 @@ app.include_router(detect_router)
 
 # Serve frontend static files
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "frontend")
-app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+if os.path.exists(FRONTEND_DIR):
+    app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 
 # Lifespan replaced startup event
 
 @app.get("/", include_in_schema=False)
 async def serve_home():
-    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+    path = os.path.join(FRONTEND_DIR, "index.html")
+    if os.path.exists(path):
+        return FileResponse(path)
+    return {"message": "API is running. Frontend not found."}
 
 
 @app.get("/{page}", include_in_schema=False)
@@ -59,7 +63,10 @@ async def serve_page(page: str):
     file_path = os.path.join(FRONTEND_DIR, f"{page}.html")
     if os.path.exists(file_path):
         return FileResponse(file_path)
-    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+    index_path = os.path.join(FRONTEND_DIR, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"error": "Page not found"}
 
 
 @app.get("/api/health")
