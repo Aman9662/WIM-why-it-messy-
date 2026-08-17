@@ -2,40 +2,50 @@
 Detection API routes — handles all detection endpoints.
 """
 import json
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Request
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Request, Header
 from fastapi.responses import JSONResponse
 import time
 from collections import defaultdict
 from backend.services.gemini import analyze_content
 from backend.services.scraper import scrape_url
-from backend.database.db import save_scan, get_history, get_scan_by_id, delete_scan
+from backend.database.db import save_scan, get_history, get_scan_by_id, delete_scan, validate_api_key
 
 router = APIRouter(prefix="/api", tags=["detection"])
 
-# Simple in-memory rate limiter (IP -> [timestamps])
-RATE_LIMIT = 10
+# Token-bucket rate limiter (Key/IP -> [timestamps])
+RATE_LIMIT = 30
 RATE_WINDOW = 60 # seconds
-ip_requests = defaultdict(list)
+requests_tracker = defaultdict(list)
 
-def check_rate_limit(request: Request):
-    ip = request.client.host if request.client else "unknown"
+def check_rate_limit(request: Request, api_key: str = None):
+    identifier = api_key if api_key else (request.client.host if request.client else "unknown")
     now = time.time()
     
     # Filter out requests older than the window
-    ip_requests[ip] = [ts for ts in ip_requests[ip] if now - ts < RATE_WINDOW]
+    requests_tracker[identifier] = [ts for ts in requests_tracker[identifier] if now - ts < RATE_WINDOW]
     
-    if len(ip_requests[ip]) >= RATE_LIMIT:
-        raise HTTPException(status_code=429, detail="Rate limit exceeded (10 req/min). Please wait.")
+    if len(requests_tracker[identifier]) >= RATE_LIMIT:
+        raise HTTPException(
+            status_code=429, 
+            detail=f"Rate limit exceeded ({RATE_LIMIT} req/min). Please wait.",
+            headers={"Retry-After": str(RATE_WINDOW)}
+        )
         
-    ip_requests[ip].append(now)
+    requests_tracker[identifier].append(now)
+
+def verify_and_rate_limit(request: Request, x_api_key: str = None):
+    if x_api_key and not validate_api_key(x_api_key):
+        raise HTTPException(status_code=401, detail="Invalid API Key")
+    check_rate_limit(request, x_api_key)
 
 @router.post("/detect/text")
 async def detect_text(
     request: Request,
     text: str = Form(...),
-    detection_type: str = Form(...)
+    detection_type: str = Form(...),
+    x_api_key: str = Header(None)
 ):
-    check_rate_limit(request)
+    verify_and_rate_limit(request, x_api_key)
     """Analyze plain text input."""
     if len(text.strip()) < 20:
         raise HTTPException(status_code=400, detail="Text too short. Please provide at least 20 characters.")
@@ -53,9 +63,10 @@ async def detect_text(
 async def detect_url(
     request: Request,
     url: str = Form(...),
-    detection_type: str = Form(...)
+    detection_type: str = Form(...),
+    x_api_key: str = Header(None)
 ):
-    check_rate_limit(request)
+    verify_and_rate_limit(request, x_api_key)
     """Scrape and analyze a URL."""
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
@@ -80,9 +91,10 @@ async def detect_url(
 async def detect_file(
     request: Request,
     file: UploadFile = File(...),
-    detection_type: str = Form(...)
+    detection_type: str = Form(...),
+    x_api_key: str = Header(None)
 ):
-    check_rate_limit(request)
+    verify_and_rate_limit(request, x_api_key)
     """Analyze an uploaded file (txt, pdf, docx)."""
     allowed_types = [
         "text/plain",

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Send Anywhere — Why It's Messy</title>
+  <link rel="stylesheet" href="/static/css/main.css?v=3">
+  <style>
+    .transfer-hero { text-align: center; padding: var(--space-3xl) 0 var(--space-xl); }
+    .transfer-hero h1 { font-family: var(--font-display); font-size: 4rem; font-style: italic; margin-bottom: var(--space-xs); }
+    .split-layout { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2xl); max-width: 1000px; margin: 0 auto; align-items: stretch; min-height: 400px; }
+    @media (max-width: 768px) { .split-layout { grid-template-columns: 1fr; } }
+    
+    .pane { background: var(--surface-solid); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: var(--space-2xl); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; box-shadow: var(--shadow-sm); }
+    .pane.send { border-color: rgba(37, 99, 235, 0.2); }
+    
+    .pane-title { font-size: var(--text-2xl); font-weight: 700; margin-bottom: var(--space-md); }
+    
+    .code-input { font-size: 3rem; letter-spacing: 0.5rem; text-align: center; border: none; border-bottom: 2px solid var(--border-strong); background: transparent; outline: none; width: 100%; max-width: 300px; font-family: var(--font-body); font-weight: 300; margin-bottom: var(--space-xl); transition: border-color 0.2s; }
+    .code-input:focus { border-color: var(--transfer-color); }
+    
+    .send-drop { border: 2px dashed var(--transfer-color); border-radius: var(--radius-lg); padding: var(--space-3xl); width: 100%; cursor: pointer; background: var(--transfer-bg); transition: all 0.2s; }
+    .send-drop:hover { background: rgba(37, 99, 235, 0.12); }
+  </style>
+</head>
+<body>
+  <div id="nav-container"></div>
+  <main class="container">
+    <div class="transfer-hero">
+      <h1>Send Anywhere</h1>
+      <p style="color:var(--ink-secondary); font-size:var(--text-lg);">Share files securely with a 6-digit code. Files expire in 10 minutes.</p>
+    </div>
+    
+    <div class="split-layout">
+      <div class="pane send">
+        <h2 class="pane-title" style="color:var(--transfer-color);">SEND</h2>
+        <div class="send-drop" onclick="document.getElementById('send-file').click()">
+          <div style="font-size:3rem; margin-bottom:var(--space-md);">+</div>
+          <div style="font-weight:600;">Select files to send</div>
+        </div>
+        <input type="file" id="send-file" multiple style="display:none">
+      </div>
+      
+      <div class="pane">
+        <h2 class="pane-title">RECEIVE</h2>
+        <p style="color:var(--ink-secondary); margin-bottom:var(--space-lg);">Enter 6-digit key to receive files</p>
+        <input type="text" class="code-input" placeholder="000000" maxlength="6">
+        <button class="btn btn-primary btn-lg" style="width:100%; max-width:300px;">Receive</button>
+      </div>
+    </div>
+  </main>
+  <div id="toast" class="toast"></div>
+  <script src="/static/js/navigation.js?v=3"></script>
+  <script>
+    let stagedTransferFiles = [];
+    let currentTransferCode = null;
+
+    function renderTransferDrop() {
+        const dropBox = document.querySelector('.send-drop');
+        if (stagedTransferFiles.length === 0) {
+            dropBox.innerHTML = `
+              <div style="font-size:3rem; margin-bottom:var(--space-md);">+</div>
+              <div style="font-weight:600;">Select files to send</div>
+            `;
+            dropBox.style.cursor = 'pointer';
+            dropBox.onclick = () => document.getElementById('send-file').click();
+            return;
+        }
+
+        let totalSize = stagedTransferFiles.reduce((acc, f) => acc + f.size, 0);
+        let title = stagedTransferFiles.length === 1 ? stagedTransferFiles[0].name : `${stagedTransferFiles.length} files selected`;
+
+        dropBox.innerHTML = `
+            <div style="font-size:2rem; margin-bottom:var(--space-sm);">📎</div>
+            <div style="font-weight:600;">${title}</div>
+            <div style="color:var(--ink-muted); font-size:var(--text-xs); margin-bottom:var(--space-md);">${(totalSize/1024/1024).toFixed(2)} MB total</div>
+            <div style="display:flex; gap:var(--space-sm); justify-content:center;">
+                <button id="cancel-stage-btn" class="btn btn-ghost" style="padding:var(--space-xs) var(--space-sm);">Cancel</button>
+                <button id="send-now-btn" class="btn btn-primary" style="padding:var(--space-xs) var(--space-md);">Send Now</button>
+            </div>
+        `;
+        dropBox.style.cursor = 'default';
+        dropBox.onclick = null;
+        
+        document.getElementById('cancel-stage-btn').onclick = (ev) => {
+            ev.stopPropagation();
+            resetSendDrop();
+        };
+        
+        document.getElementById('send-now-btn').onclick = async (ev) => {
+            ev.stopPropagation();
+            await uploadStagedFiles();
+        };
+    }
+
+    document.getElementById('send-file').addEventListener('change', (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+            stagedTransferFiles = Array.from(e.target.files);
+            renderTransferDrop();
+        }
+    });
+
+    // Add drag and drop support
+    const dropZone = document.querySelector('.send-drop');
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--accent)'; });
+    dropZone.addEventListener('dragleave', () => dropZone.style.borderColor = '');
+    dropZone.addEventListener('drop', e => { 
+        e.preventDefault(); 
+        dropZone.style.borderColor = ''; 
+        if (e.dataTransfer.files.length) { 
+            stagedTransferFiles = Array.from(e.dataTransfer.files);
+            renderTransferDrop();
+        } 
+    });
+
+    function resetSendDrop() {
+        stagedTransferFiles = [];
+        currentTransferCode = null;
+        document.getElementById('send-file').value = '';
+        renderTransferDrop();
+    }
+
+    async function uploadStagedFiles() {
+        if (stagedTransferFiles.length === 0) return;
+        const dropBox = document.querySelector('.send-drop');
+        dropBox.innerHTML = '<div style="font-size:3rem; margin-bottom:var(--space-md);">⏳</div><div style="font-weight:600;">Uploading...</div>';
+        
+        const formData = new FormData();
+        stagedTransferFiles.forEach(f => formData.append('files', f));
+        
+        try {
+            const res = await fetch('/api/transfer/upload', { method: 'POST', body: formData });
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
+            currentTransferCode = data.code;
+            
+            dropBox.innerHTML = `
+                <div style="font-weight:600; font-size:var(--text-sm); color:var(--ink-secondary); margin-bottom:var(--space-xs);">YOUR KEY</div>
+                <div style="font-family:var(--font-display); font-size:4rem; color:var(--transfer-color); letter-spacing:4px;">${data.code}</div>
+                <div style="font-size:var(--text-xs); color:var(--ink-muted); margin-top:var(--space-sm); margin-bottom:var(--space-md);">Expires in 10 minutes</div>
+                <button id="delete-transfer-btn" class="btn btn-ghost" style="color:var(--accent);">Delete Transfer</button>
+            `;
+            
+            document.getElementById('delete-transfer-btn').onclick = async (ev) => {
+                ev.stopPropagation();
+                if(currentTransferCode) {
+                    await fetch(`/api/transfer/delete/${currentTransferCode}`, {method: 'DELETE'});
+                    showToast('Transfer deleted permanently.', 'info');
+                    resetSendDrop();
+                }
+            };
+        } catch(err) {
+            showToast('Error uploading: ' + err.message, 'error');
+            resetSendDrop();
+        }
+    }
+
+    document.querySelector('.pane:not(.send) .btn-primary').addEventListener('click', async () => {
+        const codeInput = document.querySelector('.code-input');
+        const code = codeInput.value.trim();
+        if (code.length !== 6) { showToast('Please enter a 6-digit code', 'error'); return; }
+        
+        showToast('Searching...', 'info');
+        try {
+            const res = await fetch(`/api/transfer/download/${code}`);
+            if (!res.ok) {
+                if (res.status === 404) throw new Error('Code invalid or expired');
+                throw new Error(await res.text());
+            }
+            
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            
+            let filename = 'downloaded_file';
+            const disposition = res.headers.get('Content-Disposition');
+            if (disposition && disposition.includes('filename=')) {
+                filename = disposition.split('filename=')[1].replace(/"/g, '');
+            }
+            
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+            
+            showToast('Download complete!', 'success');
+            codeInput.value = '';
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    });
+  </script></body>
+</html>

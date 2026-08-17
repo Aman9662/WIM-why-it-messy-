@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Size & Format Fixer — Why It's Messy</title>
+  <link rel="stylesheet" href="/static/css/main.css?v=3">
+  <style>
+    .page-header { padding: var(--space-3xl) 0 var(--space-xl); text-align: center; }
+    .page-header h1 { font-family: var(--font-display); font-size: var(--text-4xl); margin-bottom: var(--space-xs); }
+    .fixer-layout { display: grid; grid-template-columns: 1fr 340px; gap: var(--space-xl); align-items: start; max-width: 1000px; margin: 0 auto; }
+    @media (max-width: 768px) { .fixer-layout { grid-template-columns: 1fr; } }
+    
+    .panel { background: var(--surface-solid); border: 1px solid var(--border); border-radius: var(--radius-xl); overflow: hidden; padding: var(--space-xl); box-shadow: var(--shadow-sm); }
+    .options-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: var(--space-xl); }
+    
+    .mode-toggle { display: flex; background: var(--canvas-alt); border-radius: var(--radius-full); padding: 4px; margin-bottom: var(--space-lg); }
+    .mode-btn { flex: 1; padding: var(--space-sm) var(--space-md); border: none; background: transparent; font-family: var(--font-body); font-size: var(--text-sm); font-weight: 600; color: var(--ink-muted); border-radius: var(--radius-full); cursor: pointer; transition: all 0.2s; }
+    .mode-btn.active { background: var(--surface-solid); color: var(--ink); box-shadow: var(--shadow-sm); }
+    
+    .form-row { margin-bottom: var(--space-md); }
+    .form-row label { display: block; font-size: var(--text-sm); font-weight: 600; margin-bottom: var(--space-xs); color: var(--ink); }
+    .form-row input, .form-row select { width: 100%; padding: var(--space-sm) var(--space-md); border: 1px solid var(--border-strong); border-radius: var(--radius-md); font-family: var(--font-body); font-size: var(--text-sm); }
+  </style>
+</head>
+<body>
+  <div id="nav-container"></div>
+  <main class="container">
+    <div class="page-header">
+      <span class="badge badge-size" style="margin-bottom:var(--space-sm); display:inline-flex;">📐 Size & Format Fixer</span>
+      <h1>Never struggle with form uploads again.</h1>
+      <p style="color:var(--ink-secondary); font-size:var(--text-lg); max-width:600px; margin:0 auto;">Compress images and PDFs exactly to the strict limits required by student portals, job forms, and government sites.</p>
+    </div>
+
+    <div class="fixer-layout">
+      <div class="panel">
+        <div class="drop-zone" id="file-drop" onclick="document.getElementById('file-input').click()" style="padding: var(--space-4xl) var(--space-xl);">
+          <div class="drop-zone-icon">📷</div>
+          <div class="drop-zone-title">Upload Image or PDF</div>
+          <div class="drop-zone-desc">JPG, PNG, WEBP, PDF supported</div>
+          <input type="file" id="file-input" accept="image/*,.pdf" multiple style="display:none">
+        </div>
+      </div>
+      
+      <div class="options-card">
+        <div class="mode-toggle">
+          <button class="mode-btn active">Automatic</button>
+          <button class="mode-btn">Manual</button>
+        </div>
+        
+        <div id="auto-options">
+          <div class="form-row">
+            <label>Target Form Preset</label>
+            <select id="preset-select">
+              <option value="1">High Quality (Large)</option>
+              <option value="2" selected>Generic Student Portal (< 500KB)</option>
+              <option value="3">Passport Photo (50KB - 200KB)</option>
+              <option value="4">Signature Image (< 100KB)</option>
+            </select>
+          </div>
+        </div>
+        
+        <div id="manual-options" style="display:none;">
+          <div class="form-row" style="display:flex; gap:10px;">
+            <div style="flex:1;">
+                <label>Width (px)</label>
+                <input type="number" id="manual-width" placeholder="1920">
+            </div>
+            <div style="flex:1;">
+                <label>Height (px)</label>
+                <input type="number" id="manual-height" placeholder="1080">
+            </div>
+          </div>
+        </div>
+        
+        <button class="btn btn-primary" style="width:100%; margin-top:var(--space-md); padding:var(--space-md);">Fix & Download</button>
+      </div>
+    </div>
+  </main>
+  <div id="toast" class="toast"></div>
+  <script src="/static/js/navigation.js?v=3"></script>
+  <script>
+    let selectedFiles = [];
+    let isManualMode = false;
+    
+    function renderFiles() {
+        const dropZone = document.getElementById('file-drop');
+        if (selectedFiles.length === 0) {
+            dropZone.innerHTML = `
+              <div class="drop-zone-icon">📷</div>
+              <div class="drop-zone-title">Upload Images or PDFs</div>
+              <div class="drop-zone-desc">JPG, PNG, WEBP, PDF supported</div>
+              <input type="file" id="file-input" accept="image/*,.pdf" multiple style="display:none">
+            `;
+            // Re-attach listener since we replaced the input element
+            document.getElementById('file-input').addEventListener('change', fileSelected);
+            return;
+        }
+        
+        let html = '<div style="width:100%; max-height:250px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;">';
+        
+        selectedFiles.forEach((file, index) => {
+            html += `
+            <div style="position:relative; display:flex; align-items:center; gap:10px; padding:10px; background:var(--canvas-alt); border-radius:var(--radius-md); border:1px solid var(--border);">
+                <div style="font-size:1.5rem;">${file.type.startsWith('image/') ? '📷' : '📄'}</div>
+                <div style="flex:1; overflow:hidden; text-align:left;">
+                    <div style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${file.name}</div>
+                    <div style="color:var(--ink-muted);font-size:12px;">${(file.size/1024).toFixed(1)} KB</div>
+                </div>
+                <button onclick="removeFile(event, ${index})" style="background:var(--accent); color:white; border:none; border-radius:50%; width:24px; height:24px; cursor:pointer; font-weight:bold; box-shadow:var(--shadow-sm); display:flex; align-items:center; justify-content:center;">✕</button>
+            </div>
+            `;
+        });
+        html += '</div>';
+        
+        if (selectedFiles.length > 1) {
+            html += '<button onclick="clearFile(event)" style="margin-top:15px; background:transparent; border:1px solid var(--border); border-radius:var(--radius-sm); padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer; color:var(--ink-secondary);">Clear All Files</button>';
+        }
+        
+        // Ensure input element persists so we can add more files by clicking outside the list
+        html += '<input type="file" id="file-input" accept="image/*,.pdf" multiple style="display:none">';
+        
+        dropZone.innerHTML = html;
+        document.getElementById('file-input').addEventListener('change', fileSelected);
+    }
+    
+    function fileSelected(e) {
+      if (e.target.files && e.target.files.length > 0) {
+          selectedFiles = [...selectedFiles, ...Array.from(e.target.files)];
+          renderFiles();
+      }
+    }
+    
+    function removeFile(e, index) {
+        if(e) { e.preventDefault(); e.stopPropagation(); }
+        selectedFiles.splice(index, 1);
+        renderFiles();
+    }
+    
+    function clearFile(e) {
+        if(e) { e.preventDefault(); e.stopPropagation(); }
+        selectedFiles = [];
+        renderFiles();
+    }
+    
+    document.getElementById('file-input').addEventListener('change', fileSelected);
+    const dropZone = document.getElementById('file-drop');
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--accent)'; });
+    dropZone.addEventListener('dragleave', () => dropZone.style.borderColor = '');
+    dropZone.addEventListener('drop', e => { 
+        e.preventDefault(); 
+        dropZone.style.borderColor = ''; 
+        if (e.dataTransfer.files.length) { 
+            selectedFiles = [...selectedFiles, ...Array.from(e.dataTransfer.files)];
+            renderFiles();
+        } 
+    });
+
+    const modeBtns = document.querySelectorAll('.mode-btn');
+    const autoOptions = document.getElementById('auto-options');
+    const manualOptions = document.getElementById('manual-options');
+
+    modeBtns[0].onclick = () => {
+        isManualMode = false;
+        modeBtns[0].classList.add('active');
+        modeBtns[1].classList.remove('active');
+        autoOptions.style.display = 'block';
+        manualOptions.style.display = 'none';
+    };
+
+    modeBtns[1].onclick = () => {
+        isManualMode = true;
+        modeBtns[1].classList.add('active');
+        modeBtns[0].classList.remove('active');
+        autoOptions.style.display = 'none';
+        manualOptions.style.display = 'block';
+    };
+
+    async function fixAndDownload() {
+      if (selectedFiles.length === 0) { showToast('Please upload a file first', 'error'); return; }
+      
+      let processed = 0;
+      let totalSavings = 0;
+      
+      document.querySelector('.btn-primary').disabled = true;
+      document.querySelector('.btn-primary').textContent = 'Processing...';
+
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        showToast(`Processing ${i + 1}/${selectedFiles.length}: ${file.name}...`, 'info');
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        let endpoint = '/api/utils/compress-image';
+        
+        if (file.name.toLowerCase().endsWith('.pdf')) {
+            endpoint = '/api/utils/compress-pdf';
+        } else {
+            if (isManualMode) {
+                const width = document.getElementById('manual-width').value;
+                const height = document.getElementById('manual-height').value;
+                if (!width || !height) { showToast('Please enter width and height', 'error'); continue; }
+                formData.append('width', width);
+                formData.append('height', height);
+                endpoint = '/api/utils/resize-image';
+            } else {
+                const preset = document.getElementById('preset-select').value;
+                let quality = 60;
+                if (preset === '1') quality = 80;
+                if (preset === '2') quality = 50;
+                if (preset === '3') quality = 20;
+                if (preset === '4') quality = 30;
+                formData.append('quality', quality);
+            }
+        }
+        
+        try {
+          const res = await fetch(endpoint, { method: 'POST', body: formData });
+          if (!res.ok) throw new Error(await res.text());
+          
+          const blob = await res.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          
+          // Extract filename
+          let filename = 'fixed_' + file.name;
+          const disposition = res.headers.get('Content-Disposition');
+          if (disposition && disposition.includes('filename=')) {
+              filename = disposition.split('filename=')[1].replace(/"/g, '');
+          }
+          
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          
+          // Brief pause for browser to handle download before starting the next
+          await new Promise(r => setTimeout(r, 600));
+          
+          window.URL.revokeObjectURL(url);
+          a.remove();
+          
+          processed++;
+          
+          const savings = (1 - (blob.size / file.size)) * 100;
+          if (savings > 0) totalSavings += savings;
+          
+        } catch (e) {
+          showToast(`Error on ${file.name}: ` + (e.message.length > 50 ? e.message.substring(0, 50) + '...' : e.message), 'error');
+        }
+      }
+      
+      document.querySelector('.btn-primary').disabled = false;
+      document.querySelector('.btn-primary').textContent = 'Fix & Download';
+
+      if (processed > 0) {
+          const avgSavings = (totalSavings / processed).toFixed(1);
+          if (avgSavings > 0) {
+              showToast(`Complete! ${processed} file(s) reduced by ~${avgSavings}%`, 'success'); 
+          } else {
+              showToast(`Complete! ${processed} file(s) processed.`, 'success');
+          }
+      }
+    }
+    
+    document.querySelector('.btn-primary').onclick = fixAndDownload;
+  </script></body>
+</html>

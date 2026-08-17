@@ -13,6 +13,7 @@ const DETECTION_TOOLS = [
   { id: 'fake_job',       icon: '💼', label: 'Fake Job Posting',   desc: 'Identify scam job offers' },
   { id: 'phishing',       icon: '🎣', label: 'Phishing Email',     desc: 'Detect phishing attempts' },
   { id: 'code_plagiarism',icon: '⟨⟩', label: 'Code Plagiarism',   desc: 'Check copied or AI code' },
+  { id: 'idea_check',     icon: '💡', label: 'Project Idea',       desc: 'Check idea authenticity & uniqueness' },
 ];
 
 let activeTool    = DETECTION_TOOLS[0];
@@ -21,9 +22,21 @@ let selectedFile  = null;
 let isAnalyzing   = false;
 
 function initDetectPage() {
+  const hash = window.location.hash.replace('#', '');
+  if (hash && DETECTION_TOOLS.find(t => t.id === hash)) {
+    activeTool = DETECTION_TOOLS.find(t => t.id === hash);
+  }
+
   renderSidebar();
   renderInputPanel();
   bindTabEvents();
+
+  window.addEventListener('hashchange', () => {
+    const newHash = window.location.hash.replace('#', '');
+    if (newHash && DETECTION_TOOLS.find(t => t.id === newHash)) {
+      selectTool(newHash);
+    }
+  });
 }
 
 function renderSidebar() {
@@ -75,6 +88,7 @@ function getPlaceholder(toolId) {
     fake_job:        'Paste the job posting description to check for scam indicators...',
     phishing:        'Paste the email or message content to check for phishing...',
     code_plagiarism: 'Paste your code here to check for plagiarism or AI generation...',
+    idea_check:      'Paste your project idea here to check if it already exists and how to make it unique...',
   };
   return map[toolId] || 'Enter content to analyze...';
 }

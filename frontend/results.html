@@ -1,31 +1,325 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Detection Report — FakeDetector</title>
-  <meta name="description" content="View your fake detection analysis report with score breakdown, evidence highlights, and improvement suggestions." />
-  <link rel="stylesheet" href="/static/css/main.css" />
-  <link rel="stylesheet" href="/static/css/animations.css" />
-  <link rel="stylesheet" href="/static/css/components.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scan Results — FakeDetector</title>
+  <link rel="stylesheet" href="/static/css/main.css?v=4">
+  <style>
+    body {
+      background-color: var(--canvas);
+    }
+    .results-container {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: var(--space-2xl) var(--space-lg);
+    }
+    
+    /* Header Section */
+    .results-header {
+      margin-bottom: var(--space-2xl);
+    }
+    .results-title {
+      font-family: var(--font-display);
+      font-size: 2.5rem;
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-xs);
+      color: var(--ink);
+    }
+    .results-subtitle {
+      color: var(--ink-secondary);
+      font-size: var(--text-base);
+    }
+
+    /* Improvement Suggestions List */
+    .improvements-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+    .improvement-card {
+      background: var(--surface-solid);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      display: flex;
+      gap: var(--space-lg);
+      align-items: flex-start;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s ease;
+    }
+    .improvement-card:hover {
+      box-shadow: var(--shadow-md);
+      border-color: var(--border-strong);
+    }
+    .improvement-number {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--size-bg);
+      color: var(--size-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: var(--text-xs);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .improvement-text {
+      color: var(--ink);
+      font-size: var(--text-sm);
+      line-height: 1.6;
+    }
+
+    /* Standard Cards */
+    .result-section {
+      background: var(--surface-solid);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: var(--space-xl);
+      margin-top: var(--space-xl);
+      box-shadow: var(--shadow-sm);
+    }
+    .result-section-title {
+      font-family: var(--font-display);
+      font-size: 1.75rem;
+      color: var(--ink);
+      margin-bottom: var(--space-lg);
+    }
+
+    /* Summary Table */
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--space-md) 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .summary-row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    .summary-row:first-child {
+      padding-top: 0;
+    }
+    .summary-label {
+      color: var(--ink-secondary);
+      font-size: var(--text-sm);
+    }
+    .summary-value {
+      font-weight: 600;
+      color: var(--ink);
+      font-size: var(--text-sm);
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+    }
+    
+    .score-value {
+      color: var(--pdf-color);
+      font-weight: 700;
+    }
+    .score-value.safe { color: var(--size-color); }
+    .score-value.warning { color: var(--accent); }
+
+    .verdict-pill {
+      background: var(--pdf-bg);
+      color: var(--pdf-color);
+      border: 1px solid var(--pdf-color);
+      padding: 4px 12px;
+      border-radius: var(--radius-full);
+      font-size: var(--text-xs);
+      font-weight: 700;
+    }
+    .verdict-pill.safe { background: var(--size-bg); color: var(--size-color); border-color: var(--size-color); }
+    .verdict-pill.warning { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
+
+    /* Text Block */
+    .analysis-text {
+      color: var(--ink-secondary);
+      font-size: var(--text-base);
+      line-height: 1.7;
+    }
+
+    /* Actions */
+    .actions-grid {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+    .btn-block {
+      width: 100%;
+      padding: var(--space-md);
+      font-size: var(--text-base);
+    }
+    
+    /* Loading */
+    .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-4xl) 0;
+      color: var(--ink-secondary);
+    }
+  </style>
 </head>
 <body>
+  <div id="nav-container"></div>
+  
+  <main class="results-container">
+    <div id="loading" class="loading-container">
+      <h2 style="font-family: var(--font-display);">Analyzing results...</h2>
+      <p style="margin-top: var(--space-sm);">Please wait a moment.</p>
+    </div>
 
-  <div id="nav-root"></div>
-
-  <main class="results-page">
-    <div class="container">
-      <div id="results-container">
-        <!-- Rendered by results.js -->
-        <div style="display:flex;align-items:center;justify-content:center;min-height:60vh;gap:var(--space-md)">
-          <div class="spinner"></div>
-          <span style="color:var(--text-muted)">Loading results...</span>
+    <div id="result-content" style="display: none;">
+      
+      <!-- Improvement Suggestions -->
+      <div class="results-header" id="improvements-section" style="display: none;">
+        <h1 class="results-title">✨ Improvement Suggestions</h1>
+        <p class="results-subtitle">Here's how to address the detected issues:</p>
+        <div class="improvements-list" id="improvements-list" style="margin-top: var(--space-lg);">
+          <!-- Injected dynamically -->
         </div>
       </div>
+
+      <!-- Quick Summary -->
+      <div class="result-section">
+        <h2 class="result-section-title">Quick Summary</h2>
+        
+        <div class="summary-row">
+          <span class="summary-label">Detection Type</span>
+          <span class="summary-value" id="res-type">📰 Fake News</span>
+        </div>
+        
+        <div class="summary-row">
+          <span class="summary-label">Score</span>
+          <span class="summary-value score-value" id="res-score">100/100</span>
+        </div>
+        
+        <div class="summary-row">
+          <span class="summary-label">Verdict</span>
+          <span class="summary-value"><div class="verdict-pill" id="res-verdict">Fake News</div></span>
+        </div>
+        
+        <div class="summary-row">
+          <span class="summary-label">Confidence</span>
+          <span class="summary-value" id="res-confidence">High</span>
+        </div>
+        
+        <div class="summary-row" id="issues-row">
+          <span class="summary-label">Issues Found</span>
+          <span class="summary-value" id="res-issues">1</span>
+        </div>
+      </div>
+
+      <!-- What This Means -->
+      <div class="result-section">
+        <h2 class="result-section-title">What This Means</h2>
+        <p class="analysis-text" id="res-analysis">
+          This content shows very strong indicators of being fake, misleading, or AI-generated. Do not trust without independent verification.
+        </p>
+      </div>
+
+      <!-- Actions -->
+      <div class="result-section">
+        <h2 class="result-section-title">Actions</h2>
+        <div class="actions-grid">
+          <a href="/detect" class="btn btn-secondary btn-block">Run Another Scan</a>
+          <a href="/" class="btn btn-ghost btn-block">View History</a>
+          <button onclick="window.print()" class="btn btn-ghost btn-block">Export as PDF</button>
+        </div>
+      </div>
+
     </div>
   </main>
+  
+  <script src="/static/js/navigation.js?v=4"></script>
+  <script>
+    const typeIcons = {
+      ai_content: '🤖', plagiarism: '📋', fake_news: '📰', 
+      fake_review: '⭐', fake_profile: '👤', fake_job: '💼', 
+      phishing: '🎣', code_plagiarism: '⟨⟩', idea_check: '💡'
+    };
+    const typeLabels = {
+      ai_content: 'AI Content', plagiarism: 'Plagiarism', fake_news: 'Fake News', 
+      fake_review: 'Fake Review', fake_profile: 'Fake Profile', fake_job: 'Fake Job', 
+      phishing: 'Phishing', code_plagiarism: 'Code Plagiarism', idea_check: 'Idea Check'
+    };
 
-  <script src="/static/js/navigation.js"></script>
-  <script src="/static/js/results.js"></script>
+    async function loadResult() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const id = urlParams.get('id');
+      if(!id) {
+        window.location.href = '/detect';
+        return;
+      }
+      
+      try {
+        const res = await fetch(`/api/history/${id}`);
+        const data = await res.json();
+        const full = data.full_result || {};
+        
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('result-content').style.display = 'block';
+        
+        // 1. Populate Summary
+        const typeId = data.detection_type || 'fake_news';
+        document.getElementById('res-type').textContent = `${typeIcons[typeId] || '🔍'} ${typeLabels[typeId] || 'Detection'}`;
+        
+        const score = data.score || 0;
+        const scoreEl = document.getElementById('res-score');
+        scoreEl.textContent = `${score}/100`;
+        
+        const verdictEl = document.getElementById('res-verdict');
+        verdictEl.textContent = data.verdict || 'Unknown';
+        
+        // Colors based on score
+        scoreEl.className = 'summary-value score-value';
+        verdictEl.className = 'verdict-pill';
+        if (score < 30) {
+          scoreEl.classList.add('safe');
+          verdictEl.classList.add('safe');
+        } else if (score < 70) {
+          scoreEl.classList.add('warning');
+          verdictEl.classList.add('warning');
+        }
+        
+        document.getElementById('res-confidence').textContent = full.confidence || 'Medium';
+        
+        const issuesCount = (full.highlights && full.highlights.length) || (full.evidence && full.evidence.length) || 0;
+        document.getElementById('res-issues').textContent = issuesCount;
+        if (issuesCount === 0 && score < 30) {
+          document.getElementById('issues-row').style.display = 'none';
+        }
+
+        // 2. Populate Analysis Text
+        document.getElementById('res-analysis').textContent = full.raw_analysis || 'No detailed analysis provided for this scan.';
+
+        // 3. Populate Improvements
+        const improvements = full.improvements || [];
+        if (improvements.length > 0) {
+          document.getElementById('improvements-section').style.display = 'block';
+          const list = document.getElementById('improvements-list');
+          list.innerHTML = improvements.map((imp, idx) => `
+            <div class="improvement-card">
+              <div class="improvement-number">${idx + 1}</div>
+              <div class="improvement-text">${imp}</div>
+            </div>
+          `).join('');
+        }
+        
+      } catch(e) { 
+        console.error(e); 
+        document.getElementById('loading').innerHTML = `<h2>Error loading results.</h2><p>Please try scanning again.</p><br><a href="/detect" class="btn btn-secondary">Go Back</a>`;
+      }
+    }
+    
+    document.addEventListener('DOMContentLoaded', loadResult);
+  </script>
 </body>
 </html>

@@ -10,7 +10,7 @@ class TextDetectRequest(BaseModel):
     detection_type: Literal[
         "ai_content", "plagiarism", "fake_news",
         "fake_review", "fake_profile", "fake_job",
-        "phishing", "code_plagiarism"
+        "phishing", "code_plagiarism", "idea_check"
     ]
 
 
@@ -24,6 +24,9 @@ class DetectionResult(BaseModel):
     score: float
     verdict: str
     confidence: str
+    language: str = "en"
+    granularity: str = "document-level only"
+    evidence: list[str] = []
     breakdown: dict
     highlights: list[str]
     improvements: list[str]

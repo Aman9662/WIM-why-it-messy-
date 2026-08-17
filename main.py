@@ -8,35 +8,62 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from dotenv import load_dotenv
 from backend.routes.detect import router as detect_router
-from backend.database.db import init_db
+from backend.routes.utilities import router as utils_router
+from backend.routes.ilovepdf import router as ilovepdf_router
+from backend.routes.transfer import router as transfer_router
+from backend.database.db import init_db, cleanup_expired_transfers_db
 from contextlib import asynccontextmanager
+import asyncio
+import os
 
-load_dotenv()
+async def cleanup_task():
+    """Background task to delete expired files every 5 minutes."""
+    while True:
+        try:
+            await asyncio.sleep(300) # 5 minutes
+            expired_files = cleanup_expired_transfers_db()
+            for path in expired_files:
+                if os.path.exists(path):
+                    try:
+                        os.remove(path)
+                        print(f"Cleaned up expired transfer: {path}")
+                    except:
+                        pass
+        except Exception as e:
+            print(f"Cleanup error: {e}")
 
-try:
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Setup
     init_db()
-except Exception as e:
-    print(f"Failed to initialize DB: {e}")
+    task = asyncio.create_task(cleanup_task())
+    yield
+    # Teardown
+    task.cancel()
 
 app = FastAPI(
     title="Fake Detector API",
     description="Universal fake detection powered by death",
     version="1.0.0",
     docs_url="/api/docs",
-    redoc_url="/api/redoc"
+    redoc_url="/api/redoc",
+    lifespan=lifespan
 )
 
 # CORS — allow frontend to talk to backend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Register routes
 app.include_router(detect_router)
+app.include_router(utils_router)
+app.include_router(ilovepdf_router)
+app.include_router(transfer_router)
 
 # Serve frontend static files
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "frontend")

@@ -1,6 +1,6 @@
-# FakeDetector 🔍
+# Why It's Messy 🔍
 
-**The world's most comprehensive open-source fake detection platform.**
+**The world's most comprehensive open-source file and data utility platform.**
 
 Powered by death. Free forever. No accounts required.
 

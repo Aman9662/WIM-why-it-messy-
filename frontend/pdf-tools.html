@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF Suite — Why It's Messy</title>
+  <link rel="stylesheet" href="/static/css/main.css?v=3">
+  <style>
+    .page-header { padding: var(--space-3xl) 0 var(--space-xl); text-align: center; }
+    .page-header h1 { font-family: var(--font-display); font-size: var(--text-4xl); margin-bottom: var(--space-xs); }
+    .bento-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-md); margin-bottom: var(--space-4xl); }
+    .pdf-card { background: var(--surface-solid); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-lg); transition: all 0.2s ease; cursor: pointer; display: flex; flex-direction: column; gap: var(--space-sm); position: relative; overflow: hidden; }
+    .pdf-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: transparent; transition: background 0.2s ease; }
+    .pdf-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(229, 50, 45, 0.3); }
+    .pdf-card:hover::before { background: var(--pdf-color); }
+    .pdf-icon { font-size: 2rem; width: 48px; height: 48px; border-radius: var(--radius-md); background: var(--pdf-bg); color: var(--pdf-color); display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-xs); }
+    .pdf-title { font-weight: 600; font-size: var(--text-base); color: var(--ink); }
+    .pdf-desc { font-size: var(--text-xs); color: var(--ink-secondary); line-height: 1.5; }
+    
+    /* Workspace Styles */
+    .file-card {
+        width: 110px; height: 140px; 
+        background: var(--surface-solid); 
+        border: 1px solid var(--border); 
+        border-radius: var(--radius-md); 
+        position: relative; 
+        display: flex; flex-direction: column; 
+        align-items: center; justify-content: center;
+        cursor: grab; overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .file-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .file-card:active { cursor: grabbing; }
+    .file-card .remove-btn {
+        position: absolute; top: -5px; right: -5px;
+        background: #e5322d; color: white;
+        border: none; border-radius: 50%;
+        width: 24px; height: 24px; font-size: 14px;
+        cursor: pointer; display: none;
+        align-items: center; justify-content: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        z-index: 10;
+    }
+    .file-card:hover .remove-btn { display: flex; }
+    .file-thumb {
+        width: 100%; height: 100px;
+        background-size: cover; background-position: center;
+        background-color: var(--canvas-alt);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 2.5rem; color: #e5322d;
+    }
+    .file-name {
+        font-size: 11px; width: 100%; padding: 6px 8px;
+        text-align: center; white-space: nowrap; 
+        overflow: hidden; text-overflow: ellipsis;
+        border-top: 1px solid var(--border);
+        background: var(--surface-solid); font-weight: 500;
+    }
+    .add-more-card {
+        width: 110px; height: 140px;
+        border: 2px dashed var(--border);
+        border-radius: var(--radius-md);
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        color: var(--ink-muted); cursor: pointer; background: transparent;
+        transition: all 0.2s;
+    }
+    .add-more-card:hover {
+        border-color: #e5322d; color: #e5322d;
+        background: rgba(229, 50, 45, 0.05);
+    }
+    .add-more-card i { font-size: 2rem; font-style: normal; margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <div id="nav-container"></div>
+  <main class="container">
+    <div class="page-header">
+      <span class="badge badge-pdf" style="margin-bottom:var(--space-sm); display:inline-flex;">📄 PDF Suite</span>
+      <h1>Every tool you need to work with PDFs.</h1>
+      <p style="color:var(--ink-secondary); font-size:var(--text-lg); max-width:600px; margin:0 auto;">Merge, split, compress, convert, rotate, unlock and watermark PDFs with just a few clicks.</p>
+    </div>
+
+    <div class="bento-grid">
+      <div class="pdf-card" onclick="openTool('merge')"><div class="pdf-icon">🔗</div><div class="pdf-title">Merge PDF</div><div class="pdf-desc">Combine PDFs in the order you want with the easiest PDF merger available.</div></div>
+      <div class="pdf-card" onclick="openTool('split')"><div class="pdf-icon">✂️</div><div class="pdf-title">Split PDF</div><div class="pdf-desc">Separate one page or a whole set for easy conversion into independent PDF files.</div></div>
+      <div class="pdf-card" onclick="openTool('compress')"><div class="pdf-icon">🗜️</div><div class="pdf-title">Compress PDF</div><div class="pdf-desc">Reduce file size while optimizing for maximal PDF quality.</div></div>
+      <div class="pdf-card" onclick="openTool('pdf-to-word')"><div class="pdf-icon">📝</div><div class="pdf-title">PDF to Word</div><div class="pdf-desc">Easily convert your PDF files into easy to edit DOC and DOCX documents.</div></div>
+      <div class="pdf-card" onclick="openTool('pdf-to-image')"><div class="pdf-icon">🖼️</div><div class="pdf-title">PDF to Image</div><div class="pdf-desc">Convert each PDF page into a JPG or extract all images contained in a PDF.</div></div>
+      <div class="pdf-card" onclick="openTool('image-to-pdf')"><div class="pdf-icon">📸</div><div class="pdf-title">Image to PDF</div><div class="pdf-desc">Convert JPG images to PDF in seconds. Easily adjust orientation and margins.</div></div>
+      <div class="pdf-card" onclick="openTool('protect')"><div class="pdf-icon">🔒</div><div class="pdf-title">Protect PDF</div><div class="pdf-desc">Encrypt your PDF with a password to prevent unauthorized access.</div></div>
+      <div class="pdf-card" onclick="openTool('unlock')"><div class="pdf-icon">🔓</div><div class="pdf-title">Unlock PDF</div><div class="pdf-desc">Remove PDF password security, giving you the freedom to use your PDFs as you want.</div></div>
+      <div class="pdf-card" onclick="openTool('rotate')"><div class="pdf-icon">🔄</div><div class="pdf-title">Rotate PDF</div><div class="pdf-desc">Rotate your PDFs the way you need them. You can even rotate multiple PDFs at once.</div></div>
+      <div class="pdf-card" onclick="openTool('watermark')"><div class="pdf-icon">©️</div><div class="pdf-title">Add Watermark</div><div class="pdf-desc">Stamp an image or text over your PDF in seconds.</div></div>
+    </div>
+  </main>
+  
+  <div class="modal-overlay" id="tool-modal" onclick="if(event.target===this) closeTool()">
+    <div class="modal-box" style="max-width: 600px;">
+      <h2 id="modal-title" style="margin-bottom:var(--space-xs); font-family:var(--font-display); font-size:var(--text-2xl);">Tool Name</h2>
+      <p id="modal-desc" style="color:var(--ink-secondary); margin-bottom:var(--space-lg); font-size:var(--text-sm);">Tool description.</p>
+      
+      <div id="pdf-workspace-container">
+        <!-- Initial Drop Zone -->
+        <div class="drop-zone" id="pdf-drop" onclick="document.getElementById('pdf-input').click()">
+          <div class="drop-zone-icon">📄</div>
+          <div class="drop-zone-title">Select PDF files</div>
+          <div class="drop-zone-desc">or drop PDFs here</div>
+          <input type="file" id="pdf-input" accept=".pdf" multiple style="display:none" onchange="filesSelected(event)">
+        </div>
+        
+        <!-- Workspace (Hidden initially) -->
+        <div id="pdf-workspace" style="display:none; margin-top:var(--space-md); padding:var(--space-md); background:var(--canvas-alt); border-radius:var(--radius-lg); border:1px solid var(--border);">
+            <div id="pdf-grid" style="display:flex; flex-wrap:wrap; gap:16px;"></div>
+        </div>
+      </div>
+      
+      <div id="extra-inputs" style="margin-top:var(--space-lg); display:none; padding:var(--space-md); background:var(--surface-solid); border:1px solid var(--border); border-radius:var(--radius-md);"></div>
+      
+      <div style="margin-top:var(--space-xl); display:flex; justify-content:flex-end; gap:var(--space-md);">
+        <button class="btn btn-ghost" onclick="closeTool()">Cancel</button>
+        <button class="btn btn-primary" onclick="processPDF()">Process PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="/static/js/navigation.js?v=3"></script>
+  <script>
+    let currentTool = null; let selectedFiles = [];
+    const TOOL_CONFIG = {
+      'merge': { title: 'Merge PDF', desc: 'Combine multiple PDFs.', accept: '.pdf', multiple: true },
+      'split': { title: 'Split PDF', desc: 'Extract pages.', accept: '.pdf', multiple: true, input: '<label>Pages to keep (e.g. 1-3,5)</label><input type="text" id="pdf-ranges" class="form-input" placeholder="1-3,5">' },
+      'compress': { title: 'Compress PDF', desc: 'Reduce file size.', accept: '.pdf', multiple: true },
+      'pdf-to-word': { title: 'PDF to Word', desc: 'Convert to DOCX.', accept: '.pdf', multiple: true },
+      'pdf-to-image': { title: 'PDF to Image', desc: 'Convert to JPG zip.', accept: '.pdf', multiple: true },
+      'image-to-pdf': { title: 'Image to PDF', desc: 'Convert JPG/PNG to PDF.', accept: 'image/*', multiple: true, input: '<label>Conversion Mode</label><select id="img-pdf-mode" class="form-input"><option value="merge">Merge all images into 1 PDF</option><option value="separate">Convert each image to a separate PDF</option></select>' },
+      'protect': { title: 'Protect PDF', desc: 'Add password.', accept: '.pdf', multiple: true, input: '<label>Password</label><input type="password" id="pdf-password" class="form-input">' },
+      'unlock': { title: 'Unlock PDF', desc: 'Remove password.', accept: '.pdf', multiple: true, input: '<label>Current Password</label><input type="password" id="pdf-password" class="form-input">' },
+      'rotate': { title: 'Rotate PDF', desc: 'Rotate pages.', accept: '.pdf', multiple: true, input: '<label>Angle</label><select id="pdf-angle" class="form-input"><option value="90">90 Degrees</option><option value="180">180 Degrees</option><option value="270">270 Degrees</option></select>' },
+      'watermark': { title: 'Add Watermark', desc: 'Add text watermark.', accept: '.pdf', multiple: true, input: '<label>Watermark Text</label><input type="text" id="pdf-text" class="form-input" placeholder="CONFIDENTIAL">' }
+    };
+
+    function openTool(tool) {
+      currentTool = tool; selectedFiles = []; 
+      
+      const config = TOOL_CONFIG[tool];
+      document.getElementById('modal-title').textContent = config.title;
+      document.getElementById('modal-desc').textContent = config.desc;
+      
+      const fileInput = document.getElementById('pdf-input');
+      fileInput.accept = config.accept;
+      if (config.multiple) {
+          fileInput.setAttribute('multiple', 'multiple');
+      } else {
+          fileInput.removeAttribute('multiple');
+      }
+      
+      const dropZoneTitle = document.querySelector('.drop-zone-title');
+      const dropZoneDesc = document.querySelector('.drop-zone-desc');
+      if (tool === 'image-to-pdf') {
+          dropZoneTitle.textContent = 'Select Images';
+          dropZoneDesc.textContent = 'or drop JPG/PNG here';
+      } else {
+          dropZoneTitle.textContent = 'Select PDF files';
+          dropZoneDesc.textContent = 'or drop PDFs here';
+      }
+
+      const extra = document.getElementById('extra-inputs');
+      if (config.input) {
+          extra.innerHTML = `<div class="form-row">${config.input}</div>`;
+          extra.style.display = 'block';
+      } else {
+          extra.innerHTML = '';
+          extra.style.display = 'none';
+      }
+      
+      renderFileList(); // reset view
+      document.getElementById('tool-modal').classList.add('active');
+    }
+    
+    function closeTool() { document.getElementById('tool-modal').classList.remove('active'); }
+    
+    let draggedIndex = null;
+
+    function renderFileList() {
+        const dropZone = document.getElementById('pdf-drop');
+        const workspace = document.getElementById('pdf-workspace');
+        const grid = document.getElementById('pdf-grid');
+        
+        if (selectedFiles.length === 0) {
+            dropZone.style.display = 'flex';
+            workspace.style.display = 'none';
+            grid.innerHTML = '';
+            return;
+        }
+        
+        dropZone.style.display = 'none';
+        workspace.style.display = 'block';
+        
+        let html = '';
+        selectedFiles.forEach((file, index) => {
+            let thumbHtml = '';
+            if (currentTool === 'image-to-pdf' && file.type.startsWith('image/')) {
+                const url = URL.createObjectURL(file);
+                thumbHtml = `<div class="file-thumb" style="background-image: url('${url}')"></div>`;
+            } else {
+                thumbHtml = `<div class="file-thumb">📄</div>`;
+            }
+            
+            html += `
+            <div class="file-card" draggable="true" 
+                 ondragstart="dragStart(event, ${index})" 
+                 ondragover="dragOver(event)" 
+                 ondrop="drop(event, ${index})">
+                ${thumbHtml}
+                <div class="file-name" title="${file.name}">${file.name}</div>
+                <button class="remove-btn" onclick="removePdfFile(event, ${index})">✕</button>
+            </div>`;
+        });
+        
+        // The "+" Add More button
+        if (TOOL_CONFIG[currentTool].multiple) {
+            html += `
+            <div class="add-more-card" onclick="document.getElementById('pdf-input').click()">
+                <i>+</i>
+                <span style="font-size:12px; font-weight:600;">Add more</span>
+            </div>`;
+        }
+        
+        grid.innerHTML = html;
+    }
+
+    function dragStart(e, index) {
+        draggedIndex = index;
+        e.dataTransfer.effectAllowed = 'move';
+    }
+    
+    function dragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    }
+    
+    function drop(e, targetIndex) {
+        e.preventDefault();
+        if (draggedIndex === null || draggedIndex === targetIndex) return;
+        
+        // Reorder array
+        const fileToMove = selectedFiles.splice(draggedIndex, 1)[0];
+        selectedFiles.splice(targetIndex, 0, fileToMove);
+        
+        draggedIndex = null;
+        renderFileList();
+    }
+    
+    function removePdfFile(e, index) {
+        e.preventDefault(); e.stopPropagation();
+        selectedFiles.splice(index, 1);
+        renderFileList();
+    }
+
+    function filesSelected(e) {
+      if (!e.target.files || e.target.files.length === 0) return;
+      if (TOOL_CONFIG[currentTool].multiple) {
+          selectedFiles = selectedFiles.concat(Array.from(e.target.files));
+      } else {
+          selectedFiles = Array.from(e.target.files);
+      }
+      renderFileList();
+      // Clear input so selecting the same file again triggers change
+      e.target.value = '';
+    }
+    
+    async function processPDF() { 
+      if (selectedFiles.length === 0) { showToast('Please select a file first.', 'error'); return; }
+      
+      const submitBtn = document.querySelector('.modal-box .btn-primary');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Processing...';
+      
+      let processed = 0;
+      let totalFiles = selectedFiles.length;
+      
+      // Check if we should process sequentially or as a single batch (merge)
+      let processMode = 'sequential'; 
+      if (currentTool === 'merge') {
+          processMode = 'batch';
+      } else if (currentTool === 'image-to-pdf') {
+          const modeSelect = document.getElementById('img-pdf-mode');
+          if (modeSelect && modeSelect.value === 'merge') {
+              processMode = 'batch';
+          }
+      }
+      
+      try {
+          if (processMode === 'batch') {
+              showToast('Processing all files together...', 'info');
+              const formData = new FormData();
+              selectedFiles.forEach(f => formData.append('files', f));
+              
+              await processSingleRequest(formData, 'result');
+              processed = totalFiles;
+          } else {
+              // Sequential processing
+              for (let i = 0; i < selectedFiles.length; i++) {
+                  const file = selectedFiles[i];
+                  showToast(`Processing ${i + 1}/${totalFiles}: ${file.name}...`, 'info');
+                  
+                  const formData = new FormData();
+                  if (currentTool === 'image-to-pdf') {
+                      formData.append('files', file); // ilovepdf.py expects 'files' list for image-to-pdf
+                  } else {
+                      formData.append('file', file);
+                  }
+                  
+                  await processSingleRequest(formData, file.name);
+                  processed++;
+                  
+                  // Pause to allow download
+                  if (i < selectedFiles.length - 1) await new Promise(r => setTimeout(r, 600));
+              }
+          }
+          
+          showToast(`Successfully processed ${processed} file(s)!`, 'success'); 
+          closeTool();
+          
+      } catch (err) {
+          showToast('Error: ' + err.message, 'error');
+      } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Process PDF';
+      }
+    }
+    
+    async function processSingleRequest(formData, originalName) {
+      // Add extra inputs if they exist
+      if (document.getElementById('pdf-ranges')) formData.append('ranges', document.getElementById('pdf-ranges').value);
+      if (document.getElementById('pdf-password')) formData.append('password', document.getElementById('pdf-password').value);
+      if (document.getElementById('pdf-angle')) formData.append('angle', document.getElementById('pdf-angle').value);
+      if (document.getElementById('pdf-text')) formData.append('text', document.getElementById('pdf-text').value);
+
+      const res = await fetch(`/api/ilovepdf/${currentTool}`, { method: 'POST', body: formData });
+      if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Processing failed');
+      }
+      
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      
+      let filename = 'processed_' + originalName;
+      if (originalName === 'result') filename = 'merged_result.pdf';
+      
+      const disposition = res.headers.get('Content-Disposition');
+      if (disposition && disposition.includes('filename=')) {
+          filename = disposition.split('filename=')[1].replace(/"/g, '');
+      }
+      
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    }
+  </script>
+</body>
+</html>

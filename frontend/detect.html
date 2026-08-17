@@ -1,61 +1,190 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Detection Tools — FakeDetector</title>
-  <meta name="description" content="Run a fake detection scan using text input, URL scanning, or file upload. Detect AI content, fake news, plagiarism, and more." />
-  <link rel="stylesheet" href="/static/css/main.css" />
-  <link rel="stylesheet" href="/static/css/animations.css" />
-  <link rel="stylesheet" href="/static/css/components.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detection Tools — Why It's Messy</title>
+  <link rel="stylesheet" href="/static/css/main.css?v=3">
+  <style>
+    .page-header { padding: var(--space-3xl) 0 var(--space-xl); }
+    .page-header h1 { font-family: var(--font-display); font-size: var(--text-4xl); margin-bottom: var(--space-xs); }
+    .detect-layout { display: grid; grid-template-columns: 280px 1fr; gap: var(--space-xl); align-items: start; min-height: 60vh; }
+    @media (max-width: 768px) { .detect-layout { grid-template-columns: 1fr; } }
+    
+    .sidebar { display: flex; flex-direction: column; gap: 4px; position: sticky; top: 100px; background: var(--surface); padding: var(--space-md); border-radius: var(--radius-xl); border: 1px solid var(--border); }
+    .sidebar-title { font-size: var(--text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-muted); padding: var(--space-xs) var(--space-sm); margin-bottom: var(--space-xs); }
+    .tool-btn { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md); border: 1px solid transparent; border-radius: var(--radius-md); background: transparent; cursor: pointer; text-align: left; transition: all 0.2s ease; width: 100%; font-family: var(--font-body); }
+    .tool-btn:hover { background: var(--canvas-alt); }
+    .tool-btn.active { background: var(--detect-bg); border-color: var(--detect-color); }
+    .tool-btn .icon { font-size: var(--text-xl); width: 32px; text-align: center; }
+    .tool-btn .name { font-weight: 600; font-size: var(--text-sm); color: var(--ink); }
+    .tool-btn .desc { font-size: 11px; color: var(--ink-muted); margin-top: 2px; }
+
+    .panel { background: var(--surface-solid); border: 1px solid var(--border); border-radius: var(--radius-xl); overflow: hidden; position: relative; box-shadow: var(--shadow-sm); }
+    .panel-header { padding: var(--space-xl); border-bottom: 1px solid var(--border); background: var(--canvas-alt); }
+    .panel-header h2 { font-size: var(--text-2xl); margin-bottom: var(--space-xs); }
+    .panel-header p { font-size: var(--text-sm); color: var(--ink-secondary); }
+
+    .input-tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--surface-solid); }
+    .input-tab { padding: var(--space-md) var(--space-xl); font-family: var(--font-body); font-weight: 600; font-size: var(--text-sm); color: var(--ink-muted); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.2s ease; margin-bottom: -1px; }
+    .input-tab:hover { color: var(--ink); }
+    .input-tab.active { color: var(--detect-color); border-bottom-color: var(--detect-color); }
+
+    .panel-body { padding: var(--space-xl); min-height: 300px; }
+    .input-section { display: none; }
+    .input-section.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    .char-count { text-align: right; font-size: var(--text-xs); color: var(--ink-muted); margin-top: var(--space-xs); }
+    .panel-footer { padding: var(--space-lg) var(--space-xl); border-top: 1px solid var(--border); display: flex; justify-content: flex-end; background: var(--canvas-alt); }
+    
+    .scan-overlay { position: absolute; inset: 0; background: rgba(250,248,245,0.95); backdrop-filter: blur(8px); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+    .scan-overlay.active { opacity: 1; pointer-events: auto; }
+    .scan-icon { font-size: 4rem; animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.7; } }
+  </style>
 </head>
 <body>
+  <div id="nav-container"></div>
+  <main class="container">
+    <div class="page-header">
+      <span class="badge badge-detect" style="margin-bottom:var(--space-md);">🛡️ AI Forensics</span>
+      <h1>Detection Suite</h1>
+      <p style="color:var(--ink-secondary); font-size:var(--text-lg);">Analyze content for AI generation, plagiarism, and authenticity.</p>
+    </div>
 
-  <div id="nav-root"></div>
-
-  <main class="detect-page">
-    <div class="container">
-
-      <div class="detect-header animate-fade-up">
-        <h1 id="detect-tool-title">AI Content Detection</h1>
-        <p id="detect-tool-desc" style="color:var(--text-secondary);font-size:var(--text-lg);margin-top:var(--space-sm)">
-          Detect AI-generated text
-        </p>
-      </div>
-
-      <div class="detect-layout">
-        <!-- Sidebar -->
-        <div class="detect-sidebar animate-fade-up" style="animation-delay:0.1s" id="detect-sidebar">
-          <!-- Rendered by detect.js -->
+    <div class="detect-layout">
+      <div class="sidebar" id="sidebar"></div>
+      <div class="panel">
+        <div class="panel-header">
+          <h2 id="tool-title">AI Content</h2>
+          <p id="tool-desc">Detect AI-generated text from ChatGPT, Gemini, and other LLMs.</p>
         </div>
-
-        <!-- Main Panel -->
-        <div class="detect-main animate-fade-up" style="animation-delay:0.15s">
-          <div class="detect-panel" id="detect-panel">
-            <!-- Rendered by detect.js -->
+        <div class="input-tabs">
+          <button class="input-tab active" data-tab="text">Text</button>
+          <button class="input-tab" data-tab="url">URL</button>
+          <button class="input-tab" data-tab="file">File Upload</button>
+        </div>
+        <div class="panel-body">
+          <div class="input-section active" id="section-text">
+            <textarea class="form-textarea" id="text-input" rows="8" placeholder="Paste content here to analyze..." oninput="updateCount()"></textarea>
+            <div class="char-count"><span id="char-count">0</span> characters</div>
           </div>
-
-          <!-- Info Card -->
-          <div class="card" style="border-color:var(--gold-border)">
-            <div style="display:flex;align-items:flex-start;gap:var(--space-md)">
-              <span style="font-size:1.25rem;flex-shrink:0">ℹ</span>
-              <div>
-                <h4 style="font-size:var(--text-sm);font-weight:700;margin-bottom:var(--space-xs)">How Analysis Works</h4>
-                <p style="font-size:var(--text-xs);line-height:1.6">
-                  Your content is sent to Google Gemini AI with a specialized prompt for the selected detection type.
-                  The AI returns a structured score, verdict, and detailed breakdown — no data is stored on external servers.
-                  All history is kept locally in your browser's database.
-                </p>
-              </div>
+          <div class="input-section" id="section-url">
+            <input class="form-input" id="url-input" type="url" placeholder="https://example.com/article">
+          </div>
+          <div class="input-section" id="section-file">
+            <div class="drop-zone" id="file-drop" onclick="document.getElementById('file-input').click()">
+              <div class="drop-zone-icon">📄</div>
+              <div class="drop-zone-title">Drop a file here</div>
+              <div class="drop-zone-desc">Supports .txt, .pdf, .docx</div>
+              <input type="file" id="file-input" accept=".txt,.pdf,.docx" style="display:none" onchange="fileSelected(event)">
+            </div>
+            <div id="file-info" style="display:none; margin-top:var(--space-md); align-items:center; gap:var(--space-sm); padding:var(--space-sm) var(--space-md); background:var(--canvas-alt); border-radius:var(--radius-md); border:1px solid var(--border);">
+              <span>📎</span><span id="file-name-display" style="font-weight:500;font-size:var(--text-sm);"></span>
             </div>
           </div>
         </div>
+        <div class="panel-footer">
+          <button class="btn btn-primary btn-lg" id="analyze-btn" onclick="analyze()">Analyze Content</button>
+        </div>
+        <div class="scan-overlay" id="scan-overlay">
+          <div class="scan-icon">🔍</div>
+          <h3 style="margin-top:var(--space-md); font-family:var(--font-display); font-size:var(--text-2xl);">Analyzing...</h3>
+          <p style="color:var(--ink-muted); margin-top:var(--space-xs);">Cross-referencing global databases</p>
+        </div>
       </div>
-
     </div>
   </main>
+  <div id="toast" class="toast"></div>
+  <script src="/static/js/navigation.js?v=3"></script>
+  <script>
+    const TOOLS = [
+      { id: 'ai_content',      icon: '🤖', name: 'AI Content',       desc: 'Detect AI-generated text from ChatGPT, Gemini, and other LLMs.' },
+      { id: 'plagiarism',      icon: '📋', name: 'Plagiarism',       desc: 'Check originality and detect copied content.' },
+      { id: 'fake_news',       icon: '📰', name: 'Fake News',        desc: 'Verify news credibility and spot misinformation.' },
+      { id: 'fake_review',     icon: '⭐', name: 'Fake Review',      desc: 'Identify bot-generated or fraudulent reviews.' },
+      { id: 'fake_profile',    icon: '👤', name: 'Fake Profile',     desc: 'Detect fake social media profiles.' },
+      { id: 'fake_job',        icon: '💼', name: 'Fake Job',         desc: 'Identify scam job listings and offers.' },
+      { id: 'phishing',        icon: '🎣', name: 'Phishing',         desc: 'Detect phishing attempts in emails and messages.' },
+      { id: 'code_plagiarism', icon: '⟨⟩', name: 'Code Plagiarism',  desc: 'Detect copied or cloned source code.' },
+      { id: 'idea_check',      icon: '💡', name: 'Project Idea Check',desc: 'Check if your project idea is truly unique.' },
+    ];
+    let activeTool = TOOLS[0]; let activeTab = 'text'; let selectedFile = null;
+    const hash = window.location.hash.replace('#', '');
+    const hashTool = TOOLS.find(t => t.id === hash);
+    if (hashTool) activeTool = hashTool;
 
-  <script src="/static/js/navigation.js"></script>
-  <script src="/static/js/detect.js"></script>
+    function renderSidebar() {
+      document.getElementById('sidebar').innerHTML = '<div class="sidebar-title">Detection Tools</div>' +
+        TOOLS.map(t => `<button class="tool-btn ${t.id === activeTool.id ? 'active' : ''}" onclick="selectTool('${t.id}')"><span class="icon">${t.icon}</span><div><div class="name">${t.name}</div><div class="desc">${t.desc.substring(0, 32)}...</div></div></button>`).join('');
+    }
+    function selectTool(id) {
+      activeTool = TOOLS.find(t => t.id === id); window.location.hash = id;
+      document.getElementById('tool-title').textContent = activeTool.name; document.getElementById('tool-desc').textContent = activeTool.desc;
+      renderSidebar();
+    }
+    document.querySelectorAll('.input-tab').forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll('.input-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.input-section').forEach(s => s.classList.remove('active'));
+        tab.classList.add('active'); activeTab = tab.dataset.tab;
+        document.getElementById(`section-${activeTab}`).classList.add('active');
+      };
+    });
+    function updateCount() { document.getElementById('char-count').textContent = document.getElementById('text-input').value.length; }
+    function fileSelected(e) { 
+        selectedFile = e.target.files[0]; 
+        if (selectedFile) { 
+            const fileInfo = document.getElementById('file-info');
+            fileInfo.style.display = 'flex'; 
+            fileInfo.style.justifyContent = 'space-between';
+            fileInfo.innerHTML = `
+                <div style="display:flex; align-items:center; gap:var(--space-sm);">
+                    <span>📎</span><span style="font-weight:500;font-size:var(--text-sm);">${selectedFile.name}</span>
+                </div>
+                <button onclick="clearSelectedFile(event)" style="background:none; border:none; color:var(--ink-muted); cursor:pointer; font-weight:bold;">✕</button>
+            `;
+        } 
+    }
+    
+    function clearSelectedFile(e) {
+        if(e) e.stopPropagation();
+        selectedFile = null;
+        document.getElementById('file-input').value = '';
+        document.getElementById('file-info').style.display = 'none';
+    }
+    
+    const dropZone = document.getElementById('file-drop');
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); if (e.dataTransfer.files.length) { document.getElementById('file-input').files = e.dataTransfer.files; fileSelected({ target: document.getElementById('file-input') }); } });
+
+    async function analyze() {
+      const overlay = document.getElementById('scan-overlay'); overlay.classList.add('active');
+      const formData = new FormData(); formData.append('detection_type', activeTool.id);
+      let endpoint;
+      if (activeTab === 'text') {
+        const text = document.getElementById('text-input').value;
+        if (text.trim().length < 20) { showToast('Please enter at least 20 characters.', 'error'); overlay.classList.remove('active'); return; }
+        formData.append('text', text); endpoint = '/api/detect/text';
+      } else if (activeTab === 'url') {
+        const url = document.getElementById('url-input').value;
+        if (!url) { showToast('Please enter a URL.', 'error'); overlay.classList.remove('active'); return; }
+        formData.append('url', url); endpoint = '/api/detect/url';
+      } else {
+        if (!selectedFile) { showToast('Please select a file.', 'error'); overlay.classList.remove('active'); return; }
+        formData.append('file', selectedFile); endpoint = '/api/detect/file';
+      }
+      try {
+        const res = await fetch(endpoint, { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Analysis failed');
+        if (data.id) window.location.href = `/results?id=${data.id}`;
+        else { showToast('Analysis complete!', 'success'); overlay.classList.remove('active'); }
+      } catch (err) { showToast('Error: ' + err.message, 'error'); overlay.classList.remove('active'); }
+    }
+    renderSidebar(); document.getElementById('tool-title').textContent = activeTool.name; document.getElementById('tool-desc').textContent = activeTool.desc;
+  </script>
 </body>
 </html>

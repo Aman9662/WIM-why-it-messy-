@@ -73,6 +73,30 @@ Respond ONLY with valid JSON in exactly this format:
 }}
 """,
 
+    "idea_check": """
+You are an expert startup advisor and tech evaluator. Analyze the following project idea to determine if it is truly new/unique, or if it already exists in the market. If it exists, provide examples of who is already doing it and suggest what new features or pivots the user could add to make their idea authentic and unique.
+
+Idea to analyze:
+\"\"\"
+{content}
+\"\"\"
+
+Respond ONLY with valid JSON in exactly this format:
+{{
+  "score": <number 0-100, where 100 = completely unoriginal/already exists exactly>,
+  "verdict": "<'Highly Unique' | 'Exists but has potential' | 'Already Common' | 'Exact Duplicate'>",
+  "confidence": "<'High' | 'Medium' | 'Low'>",
+  "breakdown": {{
+    "market_saturation": <number 0-100>,
+    "uniqueness_factor": <number 0-100>,
+    "feasibility": <number 0-100>
+  }},
+  "highlights": ["<name of existing similar projects/companies>", ...],
+  "improvements": ["<specific pivot or new feature to add to make it unique>", ...],
+  "raw_analysis": "<2-3 sentence detailed explanation of the market landscape for this idea>"
+}}
+""",
+
     "fake_news": """
 You are an expert fact-checker and fake news detector. Analyze the following news article or content for credibility.
 
@@ -254,6 +278,14 @@ async def analyze_content(content: str, detection_type: str) -> dict:
     """Send content to Gemini for analysis with automatic API key rotation on rate limits."""
     global current_key_index
     prompt_template = PROMPTS.get(detection_type, PROMPTS["general"])
+    
+    # Inject Task 1 & 5 requirements into the expected JSON format
+    prompt_template = prompt_template.replace(
+        '"confidence": "<\'High\' | \'Medium\' | \'Low\'>",',
+        '"confidence": "<\'High\' | \'Medium\' | \'Low\'>",\n  "language": "<detected language>",\n  "granularity": "<\'span-level\' | \'region-level\' | \'document-level only\'>",\n  "evidence": ["<exact text span or evidence>"],'
+    )
+    prompt_template += "\nIMPORTANT: If the detected language is not supported, set verdict to 'Unsupported Language'."
+
     prompt = prompt_template.format(content=content[:8000])  # Limit content length
     
     try:
@@ -285,15 +317,17 @@ async def analyze_content(content: str, detection_type: str) -> dict:
             
         except Exception as e:
             error_msg = str(e)
-            if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
+            if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg or "503" in error_msg or "UNAVAILABLE" in error_msg or "403" in error_msg or "PERMISSION_DENIED" in error_msg:
                 attempts += 1
                 if attempts < max_retries:
-                    # Rotate to the next API key and retry immediately
+                    # Rotate to the next API key and retry
+                    import time
+                    time.sleep(1) # Small backoff
                     current_key_index = (current_key_index + 1) % max_retries
-                    print(f"Rate limit hit. Rotating to API key index {current_key_index}...")
+                    print(f"API Error ({error_msg[:30]}...). Rotating to API key index {current_key_index}...")
                     continue
                 else:
-                    raise Exception("All available API keys have exhausted their rate limits. Please add more keys to .env or wait 1 minute.")
+                    raise Exception("All available API keys have exhausted their rate limits or the API is currently down due to high demand. Please try again in a few minutes.")
             
             # If it's a JSON parse error or something else, handle it below
             if isinstance(e, json.JSONDecodeError):
@@ -307,6 +341,9 @@ async def analyze_content(content: str, detection_type: str) -> dict:
         "score": 50,
         "verdict": "Analysis Inconclusive",
         "confidence": "Low",
+        "language": "unknown",
+        "granularity": "document-level only",
+        "evidence": [],
         "breakdown": {},
         "highlights": [],
         "improvements": ["Please try again with clearer content."],

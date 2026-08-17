@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Model Benchmarks — Why It's Messy</title>
+  <link rel="stylesheet" href="/static/css/main.css?v=3">
+  <style>
+    .page-header { padding: var(--space-3xl) 0 var(--space-xl); text-align: center; }
+    .page-header h1 { font-family: var(--font-display); font-size: 4rem; margin-bottom: var(--space-xs); }
+    .benchmark-card { background: var(--surface-solid); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: var(--space-xl); margin-bottom: var(--space-lg); box-shadow: var(--shadow-sm); }
+    .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-md); margin-top: var(--space-lg); }
+    .metric-box { background: var(--canvas-alt); padding: var(--space-md); border-radius: var(--radius-md); text-align: center; border: 1px solid var(--border); }
+    .metric-val { font-size: var(--text-2xl); font-weight: 700; color: var(--ink); }
+    .metric-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-muted); margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div id="nav-container"></div>
+  <main class="container">
+    <div class="page-header">
+      <h1>Transparency & Benchmarks</h1>
+      <p style="color:var(--ink-secondary); font-size:var(--text-lg);">Real accuracy numbers based on public datasets. No marketing fluff.</p>
+    </div>
+    
+    <div class="benchmark-card">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <h2 style="font-family:var(--font-display); font-size:var(--text-2xl);">AI Content Detection</h2>
+          <p style="color:var(--ink-secondary); font-size:var(--text-sm);">Model: Gemini 1.5 Pro | Dataset: HC3 (Human ChatGPT Comparison Corpus)</p>
+        </div>
+        <span class="badge" style="background:#E5322D; color:white;">Benchmark Pending</span>
+      </div>
+      <div class="metrics-grid">
+        <div class="metric-box"><div class="metric-val">--%</div><div class="metric-label">Accuracy</div></div>
+        <div class="metric-box"><div class="metric-val">--%</div><div class="metric-label">Precision</div></div>
+        <div class="metric-box"><div class="metric-val">--%</div><div class="metric-label">Recall</div></div>
+        <div class="metric-box"><div class="metric-val">--%</div><div class="metric-label">False Positive</div></div>
+      </div>
+    </div>
+  </main>
+  <div id="toast" class="toast"></div>
+  <script src="/static/js/navigation.js?v=3"></script>
+</body>
+</html>

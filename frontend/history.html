@@ -1,40 +1,63 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Scan History — FakeDetector</title>
-  <meta name="description" content="View all your past fake detection scans, revisit results, and manage your scan history." />
-  <link rel="stylesheet" href="/static/css/main.css" />
-  <link rel="stylesheet" href="/static/css/animations.css" />
-  <link rel="stylesheet" href="/static/css/components.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scan History — Why It's Messy</title>
+  <link rel="stylesheet" href="/static/css/main.css?v=3">
+  <style>
+    .page-header { padding: var(--space-3xl) 0 var(--space-xl); }
+    .page-header h1 { font-family: var(--font-display); font-size: 4rem; margin-bottom: var(--space-xs); }
+    .table-container { background: var(--surface-solid); border: 1px solid var(--border); border-radius: var(--radius-xl); overflow: hidden; box-shadow: var(--shadow-sm); }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { padding: var(--space-md) var(--space-xl); background: var(--canvas-alt); font-size: var(--text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-muted); border-bottom: 1px solid var(--border); }
+    td { padding: var(--space-md) var(--space-xl); font-size: var(--text-sm); border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover { background: var(--canvas-alt); }
+    .empty-state { text-align: center; padding: var(--space-4xl) var(--space-xl); color: var(--ink-muted); }
+  </style>
 </head>
 <body>
-
-  <div id="nav-root"></div>
-
-  <main class="history-page">
-    <div class="container">
-
-      <div class="animate-fade-up" style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-lg);margin-bottom:var(--space-2xl);flex-wrap:wrap">
-        <div>
-          <h1 style="font-size:var(--text-4xl);font-weight:900;letter-spacing:-0.04em;margin-bottom:var(--space-sm)">Scan History</h1>
-          <p style="color:var(--text-secondary)">All your past detection scans in one place.</p>
-        </div>
-        <div style="display:flex;gap:var(--space-md)">
-          <button class="btn btn-secondary" onclick="loadHistory()" id="refresh-btn">↺ Refresh</button>
-          <a href="/detect" class="btn btn-primary" id="new-scan-btn">+ New Scan</a>
-        </div>
+  <div id="nav-container"></div>
+  <main class="container">
+    <div class="page-header">
+      <h1>Scan History</h1>
+      <p style="color:var(--ink-secondary); font-size:var(--text-lg);">Your past detection results.</p>
+    </div>
+    
+    <div class="table-container">
+      <table id="history-table">
+        <thead><tr><th>Type</th><th>Preview</th><th>Verdict</th><th>Date</th><th>Action</th></tr></thead>
+        <tbody id="history-body"></tbody>
+      </table>
+      <div id="empty-state" class="empty-state" style="display:none;">
+        <div style="font-size:3rem; margin-bottom:var(--space-md);">📭</div>
+        <p>No scans yet. Run your first detection!</p>
       </div>
-
-      <div id="history-container" class="animate-fade-up" style="animation-delay:0.1s">
-        <!-- Rendered by history.js -->
-      </div>
-
     </div>
   </main>
-
-  <script src="/static/js/navigation.js"></script>
-  <script src="/static/js/history.js"></script>
+  <div id="toast" class="toast"></div>
+  <script src="/static/js/navigation.js?v=3"></script>
+  <script>
+    async function fetchHistory() {
+      try {
+        const res = await fetch('/api/history?limit=50');
+        const data = await res.json();
+        const tbody = document.getElementById('history-body');
+        if (data.history.length === 0) { document.getElementById('history-table').style.display='none'; document.getElementById('empty-state').style.display='block'; return; }
+        
+        tbody.innerHTML = data.history.map(item => `
+          <tr>
+            <td><span class="badge badge-detect">${item.detection_type}</span></td>
+            <td style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.input_preview}</td>
+            <td><strong>${item.verdict}</strong></td>
+            <td>${new Date(item.timestamp).toLocaleDateString()}</td>
+            <td><a href="/results?id=${item.id}" class="btn btn-sm btn-secondary">View</a></td>
+          </tr>
+        `).join('');
+      } catch(e) { console.error(e); }
+    }
+    fetchHistory();
+  </script>
 </body>
 </html>

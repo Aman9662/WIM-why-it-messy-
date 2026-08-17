@@ -170,10 +170,32 @@ function renderResults(result) {
           ${buildBreakdownBars(result.breakdown)}
         </div>` : ''}
 
+        <!-- Specific Evidence -->
+        ${result.evidence && result.evidence.length ? `
+        <div class="highlights-card reveal" style="border-left: 3px solid var(--danger);">
+          <h3>🔍 Specific Evidence</h3>
+          <p style="font-size:var(--text-sm);margin-bottom:var(--space-md);color:var(--text-muted)">
+            Granularity: <span style="color:#fff">${escapeHtml(result.granularity || 'span-level')}</span>
+          </p>
+          ${result.evidence.map(e => `
+            <div class="highlight-item">
+              <div class="highlight-dot" style="background:var(--danger)"></div>
+              <span>${escapeHtml(e)}</span>
+            </div>
+          `).join('')}
+        </div>` : (result.granularity ? `
+        <div class="highlights-card reveal">
+          <h3>🔍 Specific Evidence</h3>
+          <p style="font-size:var(--text-sm);margin-bottom:var(--space-md);color:var(--text-muted)">
+            Granularity: <span style="color:#fff">${escapeHtml(result.granularity)}</span>
+          </p>
+          <p style="font-size:var(--text-sm)">No region-level evidence could be extracted.</p>
+        </div>` : '')}
+
         <!-- Evidence / Highlights -->
         ${result.highlights && result.highlights.length ? `
         <div class="highlights-card reveal">
-          <h3>⚠ Evidence Found</h3>
+          <h3>⚠ Pattern Highlights</h3>
           <p style="font-size:var(--text-sm);margin-bottom:var(--space-md)">
             These specific patterns triggered the detection:
           </p>
@@ -210,6 +232,11 @@ function renderResults(result) {
             <div style="display:flex;justify-content:space-between;align-items:center">
               <span style="font-size:var(--text-sm);color:var(--text-muted)">Detection Type</span>
               <span style="font-size:var(--text-sm);font-weight:600">${icon} ${type}</span>
+            </div>
+            <div class="divider" style="margin:0"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:var(--text-sm);color:var(--text-muted)">Language</span>
+              <span style="font-size:var(--text-sm);font-weight:600;text-transform:uppercase">${escapeHtml(result.language || 'EN')}</span>
             </div>
             <div class="divider" style="margin:0"></div>
             <div style="display:flex;justify-content:space-between;align-items:center">
