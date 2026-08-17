@@ -45,7 +45,8 @@
       <div class="options-card">
         <div class="mode-toggle">
           <button class="mode-btn active">Automatic</button>
-          <button class="mode-btn">Manual</button>
+          <button class="mode-btn">Target Size</button>
+          <button class="mode-btn">Dimensions</button>
         </div>
         
         <div id="auto-options">
@@ -57,6 +58,14 @@
               <option value="3">Passport Photo (50KB - 200KB)</option>
               <option value="4">Signature Image (< 100KB)</option>
             </select>
+          </div>
+        </div>
+        
+        <div id="target-size-options" style="display:none;">
+          <div class="form-row">
+            <label>Target Maximum Size (KB)</label>
+            <input type="number" id="manual-target-kb" placeholder="e.g. 500" value="500">
+            <p style="font-size:11px; color:var(--ink-muted); margin-top:4px;">Works for both Images and PDFs.</p>
           </div>
         </div>
         
@@ -81,7 +90,7 @@
   <script src="/static/js/navigation.js?v=3"></script>
   <script>
     let selectedFiles = [];
-    let isManualMode = false;
+    let currentMode = 'auto'; // 'auto', 'target', 'dimensions'
     
     function renderFiles() {
         const dropZone = document.getElementById('file-drop');
@@ -158,21 +167,36 @@
 
     const modeBtns = document.querySelectorAll('.mode-btn');
     const autoOptions = document.getElementById('auto-options');
+    const targetSizeOptions = document.getElementById('target-size-options');
     const manualOptions = document.getElementById('manual-options');
 
     modeBtns[0].onclick = () => {
-        isManualMode = false;
+        currentMode = 'auto';
         modeBtns[0].classList.add('active');
         modeBtns[1].classList.remove('active');
+        modeBtns[2].classList.remove('active');
         autoOptions.style.display = 'block';
+        targetSizeOptions.style.display = 'none';
         manualOptions.style.display = 'none';
     };
 
     modeBtns[1].onclick = () => {
-        isManualMode = true;
+        currentMode = 'target';
         modeBtns[1].classList.add('active');
         modeBtns[0].classList.remove('active');
+        modeBtns[2].classList.remove('active');
         autoOptions.style.display = 'none';
+        targetSizeOptions.style.display = 'block';
+        manualOptions.style.display = 'none';
+    };
+
+    modeBtns[2].onclick = () => {
+        currentMode = 'dimensions';
+        modeBtns[2].classList.add('active');
+        modeBtns[0].classList.remove('active');
+        modeBtns[1].classList.remove('active');
+        autoOptions.style.display = 'none';
+        targetSizeOptions.style.display = 'none';
         manualOptions.style.display = 'block';
     };
 
@@ -194,24 +218,31 @@
         
         let endpoint = '/api/utils/compress-image';
         
-        if (file.name.toLowerCase().endsWith('.pdf')) {
-            endpoint = '/api/utils/compress-pdf';
+        if (currentMode === 'target') {
+            const targetKb = document.getElementById('manual-target-kb').value;
+            if (!targetKb) { showToast('Please enter target size in KB', 'error'); continue; }
+            formData.append('target_kb', targetKb);
+            endpoint = file.name.toLowerCase().endsWith('.pdf') ? '/api/utils/target-size-pdf' : '/api/utils/target-size-image';
         } else {
-            if (isManualMode) {
-                const width = document.getElementById('manual-width').value;
-                const height = document.getElementById('manual-height').value;
-                if (!width || !height) { showToast('Please enter width and height', 'error'); continue; }
-                formData.append('width', width);
-                formData.append('height', height);
-                endpoint = '/api/utils/resize-image';
+            if (file.name.toLowerCase().endsWith('.pdf')) {
+                endpoint = '/api/utils/compress-pdf';
             } else {
-                const preset = document.getElementById('preset-select').value;
-                let quality = 60;
-                if (preset === '1') quality = 80;
-                if (preset === '2') quality = 50;
-                if (preset === '3') quality = 20;
-                if (preset === '4') quality = 30;
-                formData.append('quality', quality);
+                if (currentMode === 'dimensions') {
+                    const width = document.getElementById('manual-width').value;
+                    const height = document.getElementById('manual-height').value;
+                    if (!width || !height) { showToast('Please enter width and height', 'error'); continue; }
+                    formData.append('width', width);
+                    formData.append('height', height);
+                    endpoint = '/api/utils/resize-image';
+                } else {
+                    const preset = document.getElementById('preset-select').value;
+                    let quality = 60;
+                    if (preset === '1') quality = 80;
+                    if (preset === '2') quality = 50;
+                    if (preset === '3') quality = 20;
+                    if (preset === '4') quality = 30;
+                    formData.append('quality', quality);
+                }
             }
         }
         

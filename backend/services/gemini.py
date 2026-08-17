@@ -2,7 +2,9 @@
 Gemini AI service — handles all AI-powered analysis.
 """
 import os
+import re
 import json
+import asyncio
 from google import genai
 from dotenv import load_dotenv
 
@@ -310,6 +312,12 @@ async def analyze_content(content: str, detection_type: str) -> dict:
                 raw_text = raw_text.split("```")[1]
                 if raw_text.startswith("json"):
                     raw_text = raw_text[4:]
+                raw_text = raw_text.strip()
+
+            # Extract the JSON object even if there's trailing text
+            match = re.search(r'\{.*\}', raw_text, re.DOTALL)
+            if match:
+                raw_text = match.group(0)
 
             result = json.loads(raw_text)
             result["detection_type"] = detection_type
@@ -317,12 +325,12 @@ async def analyze_content(content: str, detection_type: str) -> dict:
             
         except Exception as e:
             error_msg = str(e)
-            if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg or "503" in error_msg or "UNAVAILABLE" in error_msg or "403" in error_msg or "PERMISSION_DENIED" in error_msg:
+            retryable_errors = ("429", "RESOURCE_EXHAUSTED", "503", "UNAVAILABLE", "403", "PERMISSION_DENIED")
+            if any(code in error_msg for code in retryable_errors):
                 attempts += 1
                 if attempts < max_retries:
-                    # Rotate to the next API key and retry
-                    import time
-                    time.sleep(1) # Small backoff
+                    # Rotate to the next API key and retry (non-blocking)
+                    await asyncio.sleep(1)
                     current_key_index = (current_key_index + 1) % max_retries
                     print(f"API Error ({error_msg[:30]}...). Rotating to API key index {current_key_index}...")
                     continue

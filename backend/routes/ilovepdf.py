@@ -10,6 +10,37 @@ from pdf2docx import Converter
 
 router = APIRouter(prefix="/api/ilovepdf", tags=["iLovePDF Tools"])
 
+MAX_FILE_SIZE = 50 * 1024 * 1024
+
+@router.post("/compress")
+async def compress_pdf(file: UploadFile = File(...)):
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(400, "File too large (max 50MB).")
+    if file.content_type != "application/pdf" and not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(400, "File must be a PDF.")
+    
+    try:
+        reader = PdfReader(BytesIO(content))
+        writer = PdfWriter()
+        for page in reader.pages:
+            writer.add_page(page)
+            
+        for page in writer.pages:
+            page.compress_content_streams()
+            
+        out_io = BytesIO()
+        writer.remove_images()
+        writer.write(out_io)
+        
+        return Response(
+            content=out_io.getvalue(), 
+            media_type="application/pdf", 
+            headers={"Content-Disposition": f"attachment; filename=compressed_{file.filename}"}
+        )
+    except Exception as e:
+        raise HTTPException(500, f"Error processing PDF: {str(e)}")
+
 @router.post("/merge")
 async def merge_pdfs(files: list[UploadFile] = File(...)):
     writer = PdfWriter()
@@ -135,7 +166,7 @@ async def unlock_pdf(file: UploadFile = File(...), password: str = Form(...)):
     
     if reader.is_encrypted:
         success = reader.decrypt(password)
-        if not success:
+        if success == 0:
             raise HTTPException(401, "Invalid password")
             
     writer = PdfWriter()

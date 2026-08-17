@@ -271,6 +271,26 @@
       e.target.value = '';
     }
     
+    // Add drag and drop listeners
+    document.addEventListener("DOMContentLoaded", () => {
+        const dropZone = document.getElementById('pdf-drop');
+        dropZone.addEventListener('dragover', e => { 
+            e.preventDefault(); 
+            dropZone.style.borderColor = 'var(--pdf-color)'; 
+        });
+        dropZone.addEventListener('dragleave', () => { 
+            dropZone.style.borderColor = ''; 
+        });
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropZone.style.borderColor = '';
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                // Simulate event
+                filesSelected({ target: { files: e.dataTransfer.files, value: '' } });
+            }
+        });
+    });
+    
     async function processPDF() { 
       if (selectedFiles.length === 0) { showToast('Please select a file first.', 'error'); return; }
       

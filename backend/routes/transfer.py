@@ -1,7 +1,11 @@
 import os
+import shutil
+import zipfile
+import re
 from fastapi import APIRouter, File, UploadFile, HTTPException
 from fastapi.responses import FileResponse
 from backend.database.db import create_transfer, get_transfer
+from typing import List
 
 router = APIRouter(prefix="/api/transfer", tags=["Transfer Service"])
 
@@ -12,21 +16,35 @@ else:
     UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-from typing import List
-import zipfile
+MAX_TRANSFER_SIZE = 100 * 1024 * 1024  # 100 MB
+
+def sanitize_filename(filename: str) -> str:
+    """Basic sanitization for safe filenames."""
+    filename = os.path.basename(filename)
+    filename = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', filename)
+    return filename or "unnamed_file"
 
 @router.post("/upload")
 async def upload_file(files: List[UploadFile] = File(...)):
+    total_size = 0
+    for f in files:
+        f.file.seek(0, os.SEEK_END)
+        total_size += f.file.tell()
+        f.file.seek(0)
+        
+    if total_size > MAX_TRANSFER_SIZE:
+        raise HTTPException(400, "Total transfer size exceeds 100MB limit.")
+
     if len(files) == 1:
         file = files[0]
-        unique_filename = f"{os.urandom(8).hex()}_{file.filename}"
-        file_path = os.path.join(UPLOAD_DIR, unique_filename)
+        safe_name = sanitize_filename(file.filename)
+        file_path = os.path.join(UPLOAD_DIR, f"{os.urandom(8).hex()}_{safe_name}")
         
         with open(file_path, "wb") as f:
-            f.write(await file.read())
+            shutil.copyfileobj(file.file, f)
             
-        code = create_transfer(file.filename, file_path, minutes=10)
-        return {"code": code, "expires_in": "10 minutes", "file_name": file.filename}
+        code = create_transfer(safe_name, file_path, minutes=10)
+        return {"code": code, "expires_in": "10 minutes", "file_name": safe_name}
     else:
         zip_filename = f"{os.urandom(8).hex()}_archive.zip"
         zip_path = os.path.join(UPLOAD_DIR, zip_filename)

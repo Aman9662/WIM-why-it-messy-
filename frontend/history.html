@@ -44,19 +44,45 @@
         const res = await fetch('/api/history?limit=50');
         const data = await res.json();
         const tbody = document.getElementById('history-body');
-        if (data.history.length === 0) { document.getElementById('history-table').style.display='none'; document.getElementById('empty-state').style.display='block'; return; }
+        const scans = data.scans || [];
+        if (scans.length === 0) { 
+          document.getElementById('history-table').style.display='none'; 
+          document.getElementById('empty-state').style.display='block'; 
+          return; 
+        }
         
-        tbody.innerHTML = data.history.map(item => `
+        // Basic HTML escaping
+        const escapeHtml = (unsafe) => {
+          return (unsafe || '').replace(/&/g, "&amp;")
+                               .replace(/</g, "&lt;")
+                               .replace(/>/g, "&gt;")
+                               .replace(/"/g, "&quot;")
+                               .replace(/'/g, "&#039;");
+        };
+
+        tbody.innerHTML = scans.map(item => `
           <tr>
-            <td><span class="badge badge-detect">${item.detection_type}</span></td>
-            <td style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.input_preview}</td>
-            <td><strong>${item.verdict}</strong></td>
-            <td>${new Date(item.timestamp).toLocaleDateString()}</td>
-            <td><a href="/results?id=${item.id}" class="btn btn-sm btn-secondary">View</a></td>
+            <td><span class="badge badge-detect">${escapeHtml(item.detection_type)}</span></td>
+            <td style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(item.input_preview)}">${escapeHtml(item.input_preview)}</td>
+            <td><strong>${escapeHtml(item.verdict)}</strong></td>
+            <td>${new Date(item.created_at).toLocaleDateString()}</td>
+            <td>
+                <a href="/results?id=${item.id}" class="btn btn-sm btn-secondary">View</a>
+                <button onclick="deleteScan(${item.id})" class="btn btn-sm" style="color:var(--danger); border-color:var(--danger);">Delete</button>
+            </td>
           </tr>
         `).join('');
       } catch(e) { console.error(e); }
     }
+    
+    async function deleteScan(id) {
+        if (!confirm('Delete this scan?')) return;
+        try {
+            await fetch('/api/history/' + id, { method: 'DELETE' });
+            fetchHistory();
+        } catch(e) { console.error(e); }
+    }
+    
     fetchHistory();
   </script>
 </body>
