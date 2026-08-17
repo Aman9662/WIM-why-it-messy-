@@ -1,0 +1,142 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Why It's Messy (WIM) API",
+    "description": "API for Fake Detection, File Transfer, and Utilities",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8000"
+    }
+  ],
+  "paths": {
+    "/api/detect/text": {
+      "post": {
+        "summary": "Analyze plain text input",
+        "tags": ["detection"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": { "type": "string" },
+                  "detection_type": { "type": "string" }
+                },
+                "required": ["text", "detection_type"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Successful Response" }
+        }
+      }
+    },
+    "/api/detect/url": {
+      "post": {
+        "summary": "Scrape and analyze a URL",
+        "tags": ["detection"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": { "type": "string" },
+                  "detection_type": { "type": "string" }
+                },
+                "required": ["url", "detection_type"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Successful Response" }
+        }
+      }
+    },
+    "/api/transfer/upload": {
+      "post": {
+        "summary": "Upload a file for secure transfer",
+        "tags": ["Transfer Service"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Successful Response" }
+        }
+      }
+    },
+    "/api/transfer/download/{code}": {
+      "get": {
+        "summary": "Download a transferred file",
+        "tags": ["Transfer Service"],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "File Download" }
+        }
+      }
+    },
+    "/api/transfer/delete/{code}": {
+      "delete": {
+        "summary": "Delete a transferred file (Kill Switch)",
+        "tags": ["Transfer Service"],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Deleted Successfully" }
+        }
+      }
+    },
+    "/api/utils/compress-image": {
+      "post": {
+        "summary": "Compress an image file",
+        "tags": ["Utilities"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary" },
+                  "quality": { "type": "integer", "default": 85 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Compressed Image" }
+        }
+      }
+    }
+  }
+}

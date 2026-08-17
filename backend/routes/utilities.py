@@ -34,6 +34,9 @@ async def compress_image(file: UploadFile = File(...), quality: int = Form(60)):
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
     except Exception as e:
+        from PIL import UnidentifiedImageError
+        if isinstance(e, (UnidentifiedImageError, OSError)):
+            raise HTTPException(400, f"Invalid or corrupted image: {str(e)}")
         raise HTTPException(500, f"Error processing image: {str(e)}")
 
 @router.post("/resize-image")
@@ -68,6 +71,9 @@ async def resize_image(file: UploadFile = File(...), width: int = Form(...), hei
             headers={"Content-Disposition": f"attachment; filename=resized_{file.filename}"}
         )
     except Exception as e:
+        from PIL import UnidentifiedImageError
+        if isinstance(e, (UnidentifiedImageError, OSError)):
+            raise HTTPException(400, f"Invalid or corrupted image: {str(e)}")
         raise HTTPException(500, f"Error resizing image: {str(e)}")
 
 @router.post("/compress-pdf")
@@ -151,6 +157,9 @@ async def target_size_image(file: UploadFile = File(...), target_kb: int = Form(
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
     except Exception as e:
+        from PIL import UnidentifiedImageError
+        if isinstance(e, (UnidentifiedImageError, OSError)):
+            raise HTTPException(400, f"Invalid or corrupted image: {str(e)}")
         raise HTTPException(500, f"Error reaching target image size: {str(e)}")
 
 @router.post("/target-size-pdf")

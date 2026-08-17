@@ -301,7 +301,8 @@ async def analyze_content(content: str, detection_type: str) -> dict:
     while attempts < max_retries:
         try:
             client = get_client()
-            response = client.models.generate_content(
+            # Use async client so we don't block the FastAPI event loop
+            response = await client.aio.models.generate_content(
                 model="gemini-flash-latest",
                 contents=prompt
             )

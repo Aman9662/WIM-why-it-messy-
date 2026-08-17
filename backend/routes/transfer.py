@@ -25,37 +25,22 @@ def sanitize_filename(filename: str) -> str:
     return filename or "unnamed_file"
 
 @router.post("/upload")
-async def upload_file(files: List[UploadFile] = File(...)):
-    total_size = 0
-    for f in files:
-        f.file.seek(0, os.SEEK_END)
-        total_size += f.file.tell()
-        f.file.seek(0)
+async def upload_file(file: UploadFile = File(...)):
+    file.file.seek(0, os.SEEK_END)
+    total_size = file.file.tell()
+    file.file.seek(0)
         
     if total_size > MAX_TRANSFER_SIZE:
-        raise HTTPException(400, "Total transfer size exceeds 100MB limit.")
+        raise HTTPException(400, "Transfer size exceeds 100MB limit.")
 
-    if len(files) == 1:
-        file = files[0]
-        safe_name = sanitize_filename(file.filename)
-        file_path = os.path.join(UPLOAD_DIR, f"{os.urandom(8).hex()}_{safe_name}")
+    safe_name = sanitize_filename(file.filename)
+    file_path = os.path.join(UPLOAD_DIR, f"{os.urandom(8).hex()}_{safe_name}")
+    
+    with open(file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
         
-        with open(file_path, "wb") as f:
-            shutil.copyfileobj(file.file, f)
-            
-        code = create_transfer(safe_name, file_path, minutes=10)
-        return {"code": code, "expires_in": "10 minutes", "file_name": safe_name}
-    else:
-        zip_filename = f"{os.urandom(8).hex()}_archive.zip"
-        zip_path = os.path.join(UPLOAD_DIR, zip_filename)
-        
-        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            for file in files:
-                zipf.writestr(file.filename, await file.read())
-                
-        display_name = f"{len(files)} files (Archive)"
-        code = create_transfer(display_name, zip_path, minutes=10)
-        return {"code": code, "expires_in": "10 minutes", "file_name": display_name}
+    code = create_transfer(safe_name, file_path, minutes=10)
+    return {"code": code, "expires_in": "10 minutes", "file_name": safe_name}
 
 @router.get("/download/{code}")
 async def download_file(code: str):
