@@ -6,7 +6,10 @@ from backend.database.db import create_transfer, get_transfer
 router = APIRouter(prefix="/api/transfer", tags=["Transfer Service"])
 
 # Store files in a temporary uploads directory
-UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "uploads")
+if os.environ.get("VERCEL") or os.environ.get("AWS_EXECUTION_ENV"):
+    UPLOAD_DIR = "/tmp/uploads"
+else:
+    UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 from typing import List
