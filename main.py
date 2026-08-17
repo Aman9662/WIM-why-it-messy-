@@ -13,21 +13,17 @@ from contextlib import asynccontextmanager
 
 load_dotenv()
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+try:
     init_db()
-    print("[OK] Fake Detector API started successfully")
-    print("Visit: http://127.0.0.1:8000")
-    print("API Docs: http://127.0.0.1:8000/api/docs")
-    yield
+except Exception as e:
+    print(f"Failed to initialize DB: {e}")
 
 app = FastAPI(
     title="Fake Detector API",
     description="Universal fake detection powered by death",
     version="1.0.0",
     docs_url="/api/docs",
-    redoc_url="/api/redoc",
-    lifespan=lifespan
+    redoc_url="/api/redoc"
 )
 
 # CORS — allow frontend to talk to backend

@@ -7,11 +7,21 @@ import os
 from datetime import datetime
 from contextlib import closing
 
-if os.environ.get("VERCEL"):
-    DB_PATH = "/tmp/history.db"
-else:
-    DB_PATH = os.path.join(os.path.dirname(__file__), "..", "history.db")
+import tempfile
 
+def _get_db_path():
+    if os.environ.get("VERCEL") or os.environ.get("AWS_EXECUTION_ENV"):
+        return "/tmp/history.db"
+    try:
+        local_path = os.path.join(os.path.dirname(__file__), "..", "history.db")
+        # Try to open/create the file to check write permissions
+        with open(local_path, "a"):
+            pass
+        return local_path
+    except Exception:
+        return os.path.join(tempfile.gettempdir(), "history.db")
+
+DB_PATH = _get_db_path()
 
 def get_connection():
     conn = sqlite3.connect(DB_PATH)
