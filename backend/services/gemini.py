@@ -8,15 +8,18 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-API_KEYS = [k.strip() for k in os.getenv("GEMINI_API_KEY", "").split(",") if k.strip()]
-if not API_KEYS:
-    raise ValueError("GEMINI_API_KEY environment variable is missing or empty.")
-
 current_key_index = 0
+
+def get_api_keys():
+    keys = [k.strip() for k in os.getenv("GEMINI_API_KEY", "").split(",") if k.strip()]
+    if not keys:
+        raise ValueError("GEMINI_API_KEY environment variable is missing or empty. Please add it to your Vercel Environment Variables.")
+    return keys
 
 def get_client():
     """Get a Gemini client using the currently active API key."""
-    return genai.Client(api_key=API_KEYS[current_key_index])
+    keys = get_api_keys()
+    return genai.Client(api_key=keys[current_key_index % len(keys)])
 
 
 PROMPTS = {
@@ -253,7 +256,12 @@ async def analyze_content(content: str, detection_type: str) -> dict:
     prompt_template = PROMPTS.get(detection_type, PROMPTS["general"])
     prompt = prompt_template.format(content=content[:8000])  # Limit content length
     
-    max_retries = len(API_KEYS)
+    try:
+        keys = get_api_keys()
+        max_retries = len(keys)
+    except ValueError as e:
+        raise Exception(str(e))
+        
     attempts = 0
 
     while attempts < max_retries:
@@ -281,7 +289,7 @@ async def analyze_content(content: str, detection_type: str) -> dict:
                 attempts += 1
                 if attempts < max_retries:
                     # Rotate to the next API key and retry immediately
-                    current_key_index = (current_key_index + 1) % len(API_KEYS)
+                    current_key_index = (current_key_index + 1) % max_retries
                     print(f"Rate limit hit. Rotating to API key index {current_key_index}...")
                     continue
                 else:
