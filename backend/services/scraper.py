@@ -2,7 +2,6 @@
 Web scraper service — fetches and extracts content from URLs.
 """
 import httpx
-from bs4 import BeautifulSoup
 
 
 async def scrape_url(url: str) -> dict:
@@ -23,22 +22,23 @@ async def scrape_url(url: str) -> dict:
             response = await client.get(url, headers=headers)
             response.raise_for_status()
 
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        # Remove script, style, nav, footer noise
-        for tag in soup(["script", "style", "nav", "footer", "header", "aside", "form"]):
-            tag.decompose()
-
-        title = soup.title.string.strip() if soup.title else "No title found"
-
+        import re
+        html = response.text
+        
+        # Extract title
+        title_match = re.search(r'<title[^>]*>(.*?)</title>', html, re.IGNORECASE | re.DOTALL)
+        title = title_match.group(1).strip() if title_match else "No title found"
+        
         # Extract meta description
-        meta_desc = ""
-        meta = soup.find("meta", attrs={"name": "description"})
-        if meta:
-            meta_desc = meta.get("content", "")
-
-        # Extract main content
-        body = soup.get_text(separator="\n", strip=True)
+        meta_match = re.search(r'<meta[^>]*name=["\']description["\'][^>]*content=["\'](.*?)["\']', html, re.IGNORECASE)
+        meta_desc = meta_match.group(1).strip() if meta_match else ""
+        
+        # Remove noisy tags
+        html = re.sub(r'<(script|style|nav|footer|header|aside|form)[^>]*>.*?</\1>', ' ', html, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Remove all other HTML tags
+        body = re.sub(r'<[^>]+>', ' ', html)
+        
         # Collapse whitespace
         lines = [line.strip() for line in body.splitlines() if line.strip()]
         content = "\n".join(lines[:200])  # First 200 meaningful lines

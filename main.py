@@ -9,18 +9,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from dotenv import load_dotenv
 
 from backend.routes.detect import router as detect_router
 from backend.routes.utilities import router as utils_router
 from backend.routes.ilovepdf import router as ilovepdf_router
 from backend.routes.transfer import router as transfer_router
 from backend.database.db import init_db, cleanup_expired_transfers_db
-
-# Load .env at the top level so all modules can read env vars
-load_dotenv()
-
-
 async def cleanup_task():
     """Background task to delete expired transfer files every 5 minutes."""
     while True:

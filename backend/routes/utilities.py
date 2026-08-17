@@ -3,7 +3,7 @@ from fastapi.responses import Response
 from io import BytesIO
 import time
 from PIL import Image
-from pypdf import PdfReader, PdfWriter
+import fitz
 import os
 
 router = APIRouter(prefix="/api/utils", tags=["Utilities"])
@@ -18,6 +18,8 @@ async def compress_image(file: UploadFile = File(...), quality: int = Form(60)):
     if not file.content_type.startswith("image/"):
         raise HTTPException(400, "File must be an image.")
     try:
+        from PIL import ImageFile
+        ImageFile.LOAD_TRUNCATED_IMAGES = True
         img = Image.open(BytesIO(content))
         out_io = BytesIO()
         
@@ -48,6 +50,8 @@ async def resize_image(file: UploadFile = File(...), width: int = Form(...), hei
         raise HTTPException(400, "File must be an image.")
     
     try:
+        from PIL import ImageFile
+        ImageFile.LOAD_TRUNCATED_IMAGES = True
         img = Image.open(BytesIO(content))
         # Use Lanczos for high-quality downsampling
         img = img.resize((width, height), Image.Resampling.LANCZOS)
@@ -85,23 +89,10 @@ async def compress_pdf(file: UploadFile = File(...)):
         raise HTTPException(400, "File must be a PDF.")
     
     try:
-        reader = PdfReader(BytesIO(content))
-        writer = PdfWriter()
-
-        # Add all pages to the writer first
-        for page in reader.pages:
-            writer.add_page(page)
-            
-        # Now compress content streams on the writer's pages
-        for page in writer.pages:
-            page.compress_content_streams()
-
-        # Write to memory
+        doc = fitz.open(stream=content, filetype="pdf")
         out_io = BytesIO()
-        
-        # Remove images to drastically reduce size for text docs
-        writer.remove_images()
-        writer.write(out_io)
+        doc.save(out_io, garbage=4, deflate=True, clean=True)
+        doc.close()
         
         return Response(
             content=out_io.getvalue(), 
@@ -124,6 +115,8 @@ async def target_size_image(file: UploadFile = File(...), target_kb: int = Form(
         return Response(content=content, media_type=file.content_type, headers={"Content-Disposition": f"attachment; filename={file.filename}"})
     
     try:
+        from PIL import ImageFile
+        ImageFile.LOAD_TRUNCATED_IMAGES = True
         img = Image.open(BytesIO(content))
         if img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
@@ -177,17 +170,10 @@ async def target_size_pdf(file: UploadFile = File(...), target_kb: int = Form(..
         return Response(content=content, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename={file.filename}"})
         
     try:
-        reader = PdfReader(BytesIO(content))
-        writer = PdfWriter()
-        for page in reader.pages:
-            writer.add_page(page)
-            
-        for page in writer.pages:
-            page.compress_content_streams()
-            
+        doc = fitz.open(stream=content, filetype="pdf")
         out_io = BytesIO()
-        writer.remove_images()
-        writer.write(out_io)
+        doc.save(out_io, garbage=4, deflate=True, clean=True)
+        doc.close()
         
         return Response(
             content=out_io.getvalue(), 

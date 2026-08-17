@@ -1,4 +1,4 @@
-import requests
+import httpx
 import io
 import os
 from PIL import Image
@@ -42,7 +42,7 @@ def run_tests():
 
     # 1. Health Check
     try:
-        res = requests.get(f"{BASE_URL}/health")
+        res = httpx.get(f"{BASE_URL}/health")
         print_result("Health Check", res.status_code == 200)
     except Exception as e:
         print_result("Health Check", False, str(e))
@@ -50,7 +50,7 @@ def run_tests():
 
     # 2. Transfer Service
     try:
-        res = requests.post(
+        res = httpx.post(
             f"{BASE_URL}/transfer/upload",
             files=[("files", ("transfer_test.txt", b"Hello this is a secret file", "text/plain"))]
         )
@@ -58,7 +58,7 @@ def run_tests():
             code = res.json().get("code")
             print_result("Transfer Upload", True)
             
-            dl_res = requests.get(f"{BASE_URL}/transfer/download/{code}")
+            dl_res = httpx.get(f"{BASE_URL}/transfer/download/{code}")
             print_result("Transfer Download", dl_res.status_code == 200 and b"Hello" in dl_res.content)
         else:
             print_result("Transfer Upload", False, f"{res.status_code} - {res.text}")
@@ -70,7 +70,7 @@ def run_tests():
         pdf_data = create_dummy_pdf()
         
         # Merge
-        res = requests.post(
+        res = httpx.post(
             f"{BASE_URL}/ilovepdf/merge",
             files=[
                 ("files", ("test1.pdf", pdf_data, "application/pdf")),
@@ -80,7 +80,7 @@ def run_tests():
         print_result("PDF Merge", res.status_code == 200 and len(res.content) > len(pdf_data), res.text if res.status_code != 200 else None)
         
         # Protect & Unlock
-        res = requests.post(
+        res = httpx.post(
             f"{BASE_URL}/ilovepdf/protect",
             files={"file": ("test.pdf", pdf_data, "application/pdf")},
             data={"password": "testpassword"}
@@ -89,7 +89,7 @@ def run_tests():
             print_result("PDF Protect", True)
             protected_data = res.content
             
-            res_unlock = requests.post(
+            res_unlock = httpx.post(
                 f"{BASE_URL}/ilovepdf/unlock",
                 files={"file": ("protected.pdf", protected_data, "application/pdf")},
                 data={"password": "testpassword"}
@@ -107,7 +107,7 @@ def run_tests():
         pdf_data = create_dummy_pdf()
 
         # Compress Image
-        res = requests.post(
+        res = httpx.post(
             f"{BASE_URL}/utils/compress-image", 
             files={"file": ("test.jpg", img_data, "image/jpeg")},
             data={"quality": "10"}
@@ -115,7 +115,7 @@ def run_tests():
         print_result("Image Compress", res.status_code == 200 and len(res.content) < len(img_data), res.text if res.status_code != 200 else None)
 
         # Target Size Image
-        res = requests.post(
+        res = httpx.post(
             f"{BASE_URL}/utils/target-size-image", 
             files={"file": ("test.jpg", img_data, "image/jpeg")},
             data={"target_kb": "1"} # Extremely small to force heavy compression
@@ -123,7 +123,7 @@ def run_tests():
         print_result("Image Target Size", res.status_code == 200, res.text if res.status_code != 200 else None)
 
         # Resize Image
-        res = requests.post(
+        res = httpx.post(
             f"{BASE_URL}/utils/resize-image", 
             files={"file": ("test.jpg", img_data, "image/jpeg")},
             data={"width": "100", "height": "100"}
@@ -131,7 +131,7 @@ def run_tests():
         print_result("Image Resize", res.status_code == 200, res.text if res.status_code != 200 else None)
 
         # Compress PDF
-        res = requests.post(
+        res = httpx.post(
             f"{BASE_URL}/utils/compress-pdf", 
             files={"file": ("test.pdf", pdf_data, "application/pdf")}
         )

@@ -2,11 +2,11 @@ import os
 import zipfile
 import tempfile
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException
-from fastapi.responses import Response, FileResponse
+from fastapi.responses import Response
 from io import BytesIO
-from pypdf import PdfReader, PdfWriter
 import fitz  # PyMuPDF
 from pdf2docx import Converter
+from PIL import Image
 
 router = APIRouter(prefix="/api/ilovepdf", tags=["iLovePDF Tools"])
 
@@ -21,51 +21,34 @@ async def compress_pdf(file: UploadFile = File(...)):
         raise HTTPException(400, "File must be a PDF.")
     
     try:
-        reader = PdfReader(BytesIO(content))
-        writer = PdfWriter()
-        for page in reader.pages:
-            writer.add_page(page)
-            
-        for page in writer.pages:
-            page.compress_content_streams()
-            
+        doc = fitz.open(stream=content, filetype="pdf")
         out_io = BytesIO()
-        writer.remove_images()
-        writer.write(out_io)
-        
-        return Response(
-            content=out_io.getvalue(), 
-            media_type="application/pdf", 
-            headers={"Content-Disposition": f"attachment; filename=compressed_{file.filename}"}
-        )
+        doc.save(out_io, garbage=4, deflate=True, clean=True)
+        doc.close()
+        return Response(content=out_io.getvalue(), media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename=compressed_{file.filename}"})
     except Exception as e:
         raise HTTPException(500, f"Error processing PDF: {str(e)}")
 
 @router.post("/merge")
 async def merge_pdfs(files: list[UploadFile] = File(...)):
-    writer = PdfWriter()
+    out_doc = fitz.open()
     for file in files:
-        if file.content_type != "application/pdf" and not file.filename.lower().endswith('.pdf'):
-            continue
-        content = await file.read()
-        reader = PdfReader(BytesIO(content))
-        for page in reader.pages:
-            writer.add_page(page)
+        if file.content_type == "application/pdf" or file.filename.lower().endswith('.pdf'):
+            content = await file.read()
+            doc = fitz.open(stream=content, filetype="pdf")
+            out_doc.insert_pdf(doc)
+            doc.close()
     
     out_io = BytesIO()
-    writer.write(out_io)
-    return Response(
-        content=out_io.getvalue(), 
-        media_type="application/pdf", 
-        headers={"Content-Disposition": "attachment; filename=merged.pdf"}
-    )
+    out_doc.save(out_io)
+    out_doc.close()
+    return Response(content=out_io.getvalue(), media_type="application/pdf", headers={"Content-Disposition": "attachment; filename=merged.pdf"})
 
 @router.post("/split")
 async def split_pdf(file: UploadFile = File(...), ranges: str = Form(...)):
-    # ranges format: "1-3,5,7-10" (1-indexed)
     content = await file.read()
-    reader = PdfReader(BytesIO(content))
-    writer = PdfWriter()
+    doc = fitz.open(stream=content, filetype="pdf")
+    out_doc = fitz.open()
     
     try:
         pages_to_keep = set()
@@ -76,17 +59,15 @@ async def split_pdf(file: UploadFile = File(...), ranges: str = Form(...)):
             else:
                 pages_to_keep.add(int(part)-1)
                 
-        for i, page in enumerate(reader.pages):
-            if i in pages_to_keep:
-                writer.add_page(page)
+        for i in sorted(pages_to_keep):
+            if 0 <= i < len(doc):
+                out_doc.insert_pdf(doc, from_page=i, to_page=i)
                 
         out_io = BytesIO()
-        writer.write(out_io)
-        return Response(
-            content=out_io.getvalue(), 
-            media_type="application/pdf", 
-            headers={"Content-Disposition": f"attachment; filename=split_{file.filename}"}
-        )
+        out_doc.save(out_io)
+        out_doc.close()
+        doc.close()
+        return Response(content=out_io.getvalue(), media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename=split_{file.filename}"})
     except Exception as e:
         raise HTTPException(400, f"Invalid range format. Use e.g. 1-3,5. Error: {str(e)}")
 
@@ -120,8 +101,6 @@ async def pdf_to_word(file: UploadFile = File(...)):
 @router.post("/pdf-to-image")
 async def pdf_to_image(file: UploadFile = File(...)):
     content = await file.read()
-    
-    # Use PyMuPDF to render pages
     doc = fitz.open(stream=content, filetype="pdf")
     
     out_zip_io = BytesIO()
@@ -143,15 +122,10 @@ async def pdf_to_image(file: UploadFile = File(...)):
 @router.post("/protect")
 async def protect_pdf(file: UploadFile = File(...), password: str = Form(...)):
     content = await file.read()
-    reader = PdfReader(BytesIO(content))
-    writer = PdfWriter()
-    
-    for page in reader.pages:
-        writer.add_page(page)
-        
-    writer.encrypt(password)
+    doc = fitz.open(stream=content, filetype="pdf")
     out_io = BytesIO()
-    writer.write(out_io)
+    doc.save(out_io, encryption=fitz.PDF_ENCRYPT_AES_256, user_pw=password, owner_pw=password)
+    doc.close()
     
     return Response(
         content=out_io.getvalue(),
@@ -162,19 +136,15 @@ async def protect_pdf(file: UploadFile = File(...), password: str = Form(...)):
 @router.post("/unlock")
 async def unlock_pdf(file: UploadFile = File(...), password: str = Form(...)):
     content = await file.read()
-    reader = PdfReader(BytesIO(content))
+    doc = fitz.open(stream=content, filetype="pdf")
     
-    if reader.is_encrypted:
-        success = reader.decrypt(password)
-        if success == 0:
+    if doc.is_encrypted:
+        if not doc.authenticate(password):
             raise HTTPException(401, "Invalid password")
             
-    writer = PdfWriter()
-    for page in reader.pages:
-        writer.add_page(page)
-        
     out_io = BytesIO()
-    writer.write(out_io)
+    doc.save(out_io)
+    doc.close()
     
     return Response(
         content=out_io.getvalue(),
@@ -184,17 +154,15 @@ async def unlock_pdf(file: UploadFile = File(...), password: str = Form(...)):
 
 @router.post("/rotate")
 async def rotate_pdf(file: UploadFile = File(...), angle: int = Form(...)):
-    # angle should be 90, 180, 270
     content = await file.read()
-    reader = PdfReader(BytesIO(content))
-    writer = PdfWriter()
+    doc = fitz.open(stream=content, filetype="pdf")
     
-    for page in reader.pages:
-        page.rotate(angle)
-        writer.add_page(page)
+    for page in doc:
+        page.set_rotation(page.rotation + angle)
         
     out_io = BytesIO()
-    writer.write(out_io)
+    doc.save(out_io)
+    doc.close()
     
     return Response(
         content=out_io.getvalue(),
@@ -204,28 +172,21 @@ async def rotate_pdf(file: UploadFile = File(...), angle: int = Form(...)):
 
 @router.post("/remove-pages")
 async def remove_pages(file: UploadFile = File(...), pages: str = Form(...)):
-    # pages to remove e.g. "1,3,5" (1-indexed)
     content = await file.read()
-    reader = PdfReader(BytesIO(content))
-    writer = PdfWriter()
+    doc = fitz.open(stream=content, filetype="pdf")
     
     try:
-        pages_to_remove = {int(p)-1 for p in pages.split(',')}
-        for i, page in enumerate(reader.pages):
-            if i not in pages_to_remove:
-                writer.add_page(page)
+        pages_to_remove = sorted([int(p)-1 for p in pages.split(',')], reverse=True)
+        for p in pages_to_remove:
+            if 0 <= p < len(doc):
+                doc.delete_page(p)
                 
         out_io = BytesIO()
-        writer.write(out_io)
-        return Response(
-            content=out_io.getvalue(), 
-            media_type="application/pdf", 
-            headers={"Content-Disposition": f"attachment; filename=cleaned_{file.filename}"}
-        )
-    except Exception as e:
+        doc.save(out_io)
+        doc.close()
+        return Response(content=out_io.getvalue(), media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename=cleaned_{file.filename}"})
+    except Exception:
         raise HTTPException(400, "Invalid pages format. Use e.g. 1,3,5")
-
-from PIL import Image
 
 @router.post("/image-to-pdf")
 async def image_to_pdf(files: list[UploadFile] = File(...)):
@@ -253,13 +214,14 @@ async def image_to_pdf(files: list[UploadFile] = File(...)):
 @router.post("/extract-text")
 async def extract_text(file: UploadFile = File(...)):
     content = await file.read()
-    reader = PdfReader(BytesIO(content))
+    doc = fitz.open(stream=content, filetype="pdf")
     text = ""
-    for i, page in enumerate(reader.pages):
-        page_text = page.extract_text()
+    for i, page in enumerate(doc):
+        page_text = page.get_text()
         if page_text:
             text += f"--- Page {i+1} ---\n{page_text}\n\n"
             
+    doc.close()
     return Response(
         content=text.encode("utf-8"),
         media_type="text/plain",
@@ -288,61 +250,39 @@ async def pdf_to_html(file: UploadFile = File(...)):
 
 @router.post("/organize")
 async def organize_pdf(file: UploadFile = File(...), order: str = Form(...)):
-    # order e.g. "5,1,2,4"
     content = await file.read()
-    reader = PdfReader(BytesIO(content))
-    writer = PdfWriter()
+    doc = fitz.open(stream=content, filetype="pdf")
+    out_doc = fitz.open()
     
     try:
         page_indices = [int(p)-1 for p in order.split(',')]
         for i in page_indices:
-            writer.add_page(reader.pages[i])
-            
+            if 0 <= i < len(doc):
+                out_doc.insert_pdf(doc, from_page=i, to_page=i)
+                
         out_io = BytesIO()
-        writer.write(out_io)
-        return Response(
-            content=out_io.getvalue(), 
-            media_type="application/pdf", 
-            headers={"Content-Disposition": f"attachment; filename=organized_{file.filename}"}
-        )
+        out_doc.save(out_io)
+        out_doc.close()
+        doc.close()
+        return Response(content=out_io.getvalue(), media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename=organized_{file.filename}"})
     except Exception as e:
         raise HTTPException(400, f"Invalid order format. Use e.g. 5,1,2,4. Error: {str(e)}")
-
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
 
 @router.post("/add-watermark")
 async def add_watermark(file: UploadFile = File(...), text: str = Form(...)):
     content = await file.read()
-    reader = PdfReader(BytesIO(content))
-    writer = PdfWriter()
+    doc = fitz.open(stream=content, filetype="pdf")
     
-    # Create a simple watermark PDF using reportlab
-    packet = BytesIO()
-    can = canvas.Canvas(packet, pagesize=letter)
-    can.setFont("Helvetica", 60)
-    can.setFillColorRGB(0.5, 0.5, 0.5, alpha=0.3)
-    can.saveState()
-    can.translate(300, 400)
-    can.rotate(45)
-    can.drawCentredString(0, 0, text)
-    can.restoreState()
-    can.save()
-    packet.seek(0)
-    
-    watermark_pdf = PdfReader(packet)
-    watermark_page = watermark_pdf.pages[0]
-    
-    for page in reader.pages:
-        page.merge_page(watermark_page)
-        writer.add_page(page)
+    for page in doc:
+        rect = page.rect
+        page.insert_text(fitz.Point(rect.width/2 - 50, rect.height/2), text, fontsize=60, color=(0.5, 0.5, 0.5), fill_opacity=0.3, rotate=45)
         
     out_io = BytesIO()
-    writer.write(out_io)
+    doc.save(out_io)
+    doc.close()
     
     return Response(
         content=out_io.getvalue(),
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=watermarked_{file.filename}"}
     )
-

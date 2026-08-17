@@ -47,8 +47,10 @@ async def detect_text(
 ):
     verify_and_rate_limit(request, x_api_key)
     """Analyze plain text input."""
-    if detection_type not in PROMPTS:
+    if not detection_type or len(detection_type) < 2:
         raise HTTPException(status_code=400, detail="Unsupported detection type")
+    if detection_type not in PROMPTS:
+        detection_type = "general"
         
     if len(text.strip()) < 20:
         raise HTTPException(status_code=400, detail="Text too short. Please provide at least 20 characters.")
@@ -71,8 +73,10 @@ async def detect_url(
 ):
     verify_and_rate_limit(request, x_api_key)
     """Scrape and analyze a URL."""
-    if detection_type not in PROMPTS:
+    if not detection_type or len(detection_type) < 2:
         raise HTTPException(status_code=400, detail="Unsupported detection type")
+    if detection_type not in PROMPTS:
+        detection_type = "general"
 
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
@@ -120,8 +124,10 @@ async def detect_file(
 ):
     verify_and_rate_limit(request, x_api_key)
     """Analyze an uploaded file (txt, pdf, docx)."""
-    if detection_type not in PROMPTS:
+    if not detection_type or len(detection_type) < 2:
         raise HTTPException(status_code=400, detail="Unsupported detection type")
+    if detection_type not in PROMPTS:
+        detection_type = "general"
         
     allowed_types = [
         "text/plain",
