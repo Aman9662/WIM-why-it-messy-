@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scan History — FakeDetector</title>
+  <meta name="description" content="View all your past fake detection scans, revisit results, and manage your scan history." />
+  <link rel="stylesheet" href="/static/css/main.css" />
+  <link rel="stylesheet" href="/static/css/animations.css" />
+  <link rel="stylesheet" href="/static/css/components.css" />
+</head>
+<body>
+
+  <div id="nav-root"></div>
+
+  <main class="history-page">
+    <div class="container">
+
+      <div class="animate-fade-up" style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-lg);margin-bottom:var(--space-2xl);flex-wrap:wrap">
+        <div>
+          <h1 style="font-size:var(--text-4xl);font-weight:900;letter-spacing:-0.04em;margin-bottom:var(--space-sm)">Scan History</h1>
+          <p style="color:var(--text-secondary)">All your past detection scans in one place.</p>
+        </div>
+        <div style="display:flex;gap:var(--space-md)">
+          <button class="btn btn-secondary" onclick="loadHistory()" id="refresh-btn">↺ Refresh</button>
+          <a href="/detect" class="btn btn-primary" id="new-scan-btn">+ New Scan</a>
+        </div>
+      </div>
+
+      <div id="history-container" class="animate-fade-up" style="animation-delay:0.1s">
+        <!-- Rendered by history.js -->
+      </div>
+
+    </div>
+  </main>
+
+  <script src="/static/js/navigation.js"></script>
+  <script src="/static/js/history.js"></script>
+</body>
+</html>

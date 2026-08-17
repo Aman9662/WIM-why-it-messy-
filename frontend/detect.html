@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Detection Tools — FakeDetector</title>
+  <meta name="description" content="Run a fake detection scan using text input, URL scanning, or file upload. Detect AI content, fake news, plagiarism, and more." />
+  <link rel="stylesheet" href="/static/css/main.css" />
+  <link rel="stylesheet" href="/static/css/animations.css" />
+  <link rel="stylesheet" href="/static/css/components.css" />
+</head>
+<body>
+
+  <div id="nav-root"></div>
+
+  <main class="detect-page">
+    <div class="container">
+
+      <div class="detect-header animate-fade-up">
+        <h1 id="detect-tool-title">AI Content Detection</h1>
+        <p id="detect-tool-desc" style="color:var(--text-secondary);font-size:var(--text-lg);margin-top:var(--space-sm)">
+          Detect AI-generated text
+        </p>
+      </div>
+
+      <div class="detect-layout">
+        <!-- Sidebar -->
+        <div class="detect-sidebar animate-fade-up" style="animation-delay:0.1s" id="detect-sidebar">
+          <!-- Rendered by detect.js -->
+        </div>
+
+        <!-- Main Panel -->
+        <div class="detect-main animate-fade-up" style="animation-delay:0.15s">
+          <div class="detect-panel" id="detect-panel">
+            <!-- Rendered by detect.js -->
+          </div>
+
+          <!-- Info Card -->
+          <div class="card" style="border-color:var(--gold-border)">
+            <div style="display:flex;align-items:flex-start;gap:var(--space-md)">
+              <span style="font-size:1.25rem;flex-shrink:0">ℹ</span>
+              <div>
+                <h4 style="font-size:var(--text-sm);font-weight:700;margin-bottom:var(--space-xs)">How Analysis Works</h4>
+                <p style="font-size:var(--text-xs);line-height:1.6">
+                  Your content is sent to Google Gemini AI with a specialized prompt for the selected detection type.
+                  The AI returns a structured score, verdict, and detailed breakdown — no data is stored on external servers.
+                  All history is kept locally in your browser's database.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script src="/static/js/navigation.js"></script>
+  <script src="/static/js/detect.js"></script>
+</body>
+</html>

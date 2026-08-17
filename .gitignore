@@ -1,0 +1,9 @@
+.env
+*.db
+__pycache__/
+*.pyc
+node_modules/
+.DS_Store
+investor_demo.py
+test_all.py
+investor_results.md

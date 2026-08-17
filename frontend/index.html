@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fake Detector - Truth in the Digital Age</title>
+    
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/components.css">
+    <link rel="stylesheet" href="/static/css/animations.css">
+    
+    <style>
+        /* Homepage-specific editorial overrides and layouts */
+        :root {
+            /* Ensuring variables fallback gracefully if main.css uses different names */
+            --hp-navy: var(--bg-primary, #040d1a);
+            --hp-gold: var(--accent-color, #d4af37);
+            --hp-text: var(--text-primary, #e2e8f0);
+            --hp-muted: var(--text-secondary, #94a3b8);
+            --hp-border: rgba(212, 175, 55, 0.15);
+        }
+
+        body {
+            background-color: var(--hp-navy);
+            color: var(--hp-text);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Subtle film grain texture for editorial personality */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background-image: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)" opacity="0.04"/%3E%3C/svg%3E');
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* Editorial Typography */
+        .editorial-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 4vw;
+        }
+
+        .hero-section {
+            padding: 15vh 0 10vh 0;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .hero-title {
+            font-size: clamp(4rem, 10vw, 9rem);
+            font-weight: 900;
+            line-height: 0.9;
+            letter-spacing: -0.04em;
+            margin: 0 0 1.5rem 0;
+            color: #ffffff;
+        }
+
+        .hero-subtitle {
+            font-size: clamp(1.25rem, 2vw, 1.75rem);
+            line-height: 1.4;
+            color: var(--hp-muted);
+            max-width: 600px;
+            margin: 0 0 3rem 0;
+            font-weight: 400;
+        }
+
+        .cta-gold {
+            display: inline-block;
+            background-color: var(--hp-gold);
+            color: #000;
+            font-weight: 700;
+            font-size: 1.125rem;
+            padding: 1rem 2.5rem;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .cta-gold:hover {
+            background-color: #fce883;
+            transform: translateY(-2px);
+        }
+
+        /* Bento Grid */
+        .bento-section {
+            padding: 5vh 0 15vh 0;
+        }
+
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-auto-rows: 240px;
+            gap: 1.5rem;
+        }
+
+        .bento-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--hp-border);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            transition: background 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .bento-card:hover {
+            background: rgba(212, 175, 55, 0.05);
+        }
+
+        .bento-card h3 {
+            font-size: 1.5rem;
+            margin: 0 0 0.5rem 0;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .bento-card p {
+            margin: 0;
+            color: var(--hp-muted);
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
+        .bento-large {
+            grid-column: span 2;
+            grid-row: span 2;
+            padding: 3rem;
+            background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(212,175,55,0.08) 100%);
+        }
+
+        .bento-large h3 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .bento-large p {
+            font-size: 1.125rem;
+            max-width: 80%;
+        }
+
+        /* Typography Quote Section */
+        .quote-section {
+            padding: 10vh 0;
+            max-width: 1000px;
+        }
+
+        .quote-text {
+            font-size: clamp(2rem, 5vw, 4rem);
+            line-height: 1.1;
+            font-style: italic;
+            font-weight: 300;
+            color: #fff;
+            margin: 0;
+            padding-left: 2rem;
+            border-left: 4px solid var(--hp-gold);
+            letter-spacing: -0.02em;
+        }
+
+        /* Input Method Strip */
+        .input-strip-section {
+            border-top: 1px solid var(--hp-border);
+            border-bottom: 1px solid var(--hp-border);
+            padding: 4rem 0;
+            margin: 5vh 0;
+        }
+
+        .input-strip {
+            display: flex;
+            gap: 4rem;
+            justify-content: space-between;
+        }
+
+        .input-item {
+            flex: 1;
+            display: flex;
+            align-items: flex-start;
+            gap: 1.5rem;
+        }
+
+        .input-icon {
+            color: var(--hp-gold);
+            font-size: 1.5rem;
+            font-family: monospace;
+            font-weight: bold;
+            padding-top: 0.25rem;
+        }
+
+        .input-item h4 {
+            font-size: 1.25rem;
+            margin: 0 0 0.5rem 0;
+            color: #fff;
+        }
+
+        .input-item p {
+            margin: 0;
+            color: var(--hp-muted);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        /* Open Source Section */
+        .os-section {
+            padding: 10vh 0 15vh 0;
+            max-width: 700px;
+        }
+
+        .os-title {
+            font-size: 2rem;
+            margin: 0 0 1rem 0;
+            color: #fff;
+        }
+
+        .os-text {
+            color: var(--hp-muted);
+            font-size: 1.125rem;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+
+        .os-link {
+            color: var(--hp-gold);
+            text-decoration: none;
+            border-bottom: 1px solid var(--hp-gold);
+            padding-bottom: 2px;
+            font-weight: 600;
+            transition: opacity 0.3s ease;
+        }
+        
+        .os-link:hover {
+            opacity: 0.8;
+        }
+
+        /* Footer override to ensure it matches the layout */
+        footer {
+            border-top: 1px solid var(--hp-border);
+            padding: 3rem 4vw;
+            display: flex;
+            justify-content: space-between;
+            color: var(--hp-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .bento-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .bento-large {
+                grid-column: span 2;
+                grid-row: span 1;
+            }
+            .input-strip {
+                flex-direction: column;
+                gap: 2.5rem;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .bento-grid {
+                grid-template-columns: 1fr;
+            }
+            .bento-large {
+                grid-column: span 1;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation Root -->
+    <div id="nav-root"></div>
+
+    <!-- Opening Statement -->
+    <header class="editorial-container hero-section">
+        <h1 class="hero-title">Detect the Fake.</h1>
+        <p class="hero-subtitle">Advanced computational analysis to separate genuine content from synthesized manipulation.</p>
+        <a href="/analyze" class="cta-gold">Start Analysis</a>
+    </header>
+
+    <!-- Bento Grid -->
+    <section class="editorial-container bento-section">
+        <div class="bento-grid">
+            <!-- Large Featured 1 -->
+            <a href="/tools/ai-content" class="bento-card bento-large">
+                <div>
+                    <h3>AI Content Patterns</h3>
+                    <p>Detect structural anomalies, predictable token distributions, and zero-shot generative watermarks in written text.</p>
+                </div>
+            </a>
+            
+            <!-- Large Featured 2 -->
+            <a href="/tools/fake-news" class="bento-card bento-large">
+                <div>
+                    <h3>Misinformation Tracking</h3>
+                    <p>Cross-reference claims against trusted databases, analyze publisher bias, and evaluate source credibility in real-time.</p>
+                </div>
+            </a>
+
+            <!-- Small Cards -->
+            <a href="/tools/phishing" class="bento-card">
+                <h3>Phishing Signatures</h3>
+                <p>Analyze domain entropy and semantic deception.</p>
+            </a>
+            <a href="/tools/deepfake" class="bento-card">
+                <h3>Deepfake Video</h3>
+                <p>Facial artifact and temporal inconsistency detection.</p>
+            </a>
+            <a href="/tools/bot-network" class="bento-card">
+                <h3>Bot Networks</h3>
+                <p>Identify coordinated inauthentic behavior patterns.</p>
+            </a>
+            <a href="/tools/plagiarism" class="bento-card">
+                <h3>Semantic Plagiarism</h3>
+                <p>Beyond exact matches: structural copying.</p>
+            </a>
+            <a href="/tools/image-manipulation" class="bento-card">
+                <h3>Image Forgery</h3>
+                <p>Error level analysis and metadata extraction.</p>
+            </a>
+            <a href="/tools/audio-spoofing" class="bento-card">
+                <h3>Audio Spoofing</h3>
+                <p>Spectrogram analysis of synthetic voices.</p>
+            </a>
+        </div>
+    </section>
+
+    <!-- Typography Quote -->
+    <section class="editorial-container quote-section">
+        <blockquote class="quote-text">
+            "In an ecosystem saturated with synthetic media, verification is no longer optional. It is the foundational layer of digital trust."
+        </blockquote>
+    </section>
+
+    <!-- Input Methods Strip -->
+    <div class="input-strip-section">
+        <div class="editorial-container input-strip">
+            <div class="input-item">
+                <div class="input-icon">T</div>
+                <div>
+                    <h4>Raw Text</h4>
+                    <p>Paste articles, essays, or transcripts directly into our engine for immediate linguistic footprint analysis.</p>
+                </div>
+            </div>
+            <div class="input-item">
+                <div class="input-icon">/</div>
+                <div>
+                    <h4>URL Scraping</h4>
+                    <p>Provide a link. We extract the content, bypass paywalls where legal, and analyze the context.</p>
+                </div>
+            </div>
+            <div class="input-item">
+                <div class="input-icon">[ ]</div>
+                <div>
+                    <h4>File Upload</h4>
+                    <p>Process PDFs, Word documents, or audio files in bulk through our secure processing pipeline.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Open Source -->
+    <section class="editorial-container os-section">
+        <h2 class="os-title">Built in the Open</h2>
+        <p class="os-text">
+            Truth requires transparency. Our core detection models, training datasets, and API infrastructure are open source. We believe proprietary black boxes have no place in the fight against misinformation.
+        </p>
+        <a href="https://github.com/fake-detector" target="_blank" class="os-link">Review the code on GitHub</a>
+    </section>
+
+    <!-- Footer Structure -->
+    <footer>
+        <div class="footer-left">
+            &copy; 2026 Fake Detector Initiative.
+        </div>
+        <div class="footer-right">
+            <a href="/privacy" style="color: inherit; margin-left: 1rem; text-decoration: none;">Privacy</a>
+            <a href="/terms" style="color: inherit; margin-left: 1rem; text-decoration: none;">Terms</a>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="/static/js/navigation.js"></script>
+</body>
+</html>

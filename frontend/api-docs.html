@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API Documentation — FakeDetector</title>
+  <meta name="description" content="Integrate FakeDetector's fake detection capabilities into your own applications with our clean REST API." />
+  <link rel="stylesheet" href="/static/css/main.css" />
+  <link rel="stylesheet" href="/static/css/animations.css" />
+  <link rel="stylesheet" href="/static/css/components.css" />
+</head>
+<body>
+
+  <div id="nav-root"></div>
+
+  <main class="api-docs-page">
+    <div class="container">
+
+      <div class="animate-fade-up" style="margin-bottom:var(--space-2xl)">
+        <span class="badge badge-gold mb-lg">REST API</span>
+        <h1 style="font-size:var(--text-4xl);font-weight:900;letter-spacing:-0.04em;margin-bottom:var(--space-sm)">API Documentation</h1>
+        <p style="font-size:var(--text-lg);color:var(--text-secondary)">
+          Integrate fake detection into your own applications. All endpoints return structured JSON.
+        </p>
+      </div>
+
+      <div class="api-docs-layout">
+
+        <!-- Sidebar Navigation -->
+        <nav class="api-sidebar animate-fade-up" style="animation-delay:0.1s">
+          <div style="font-size:var(--text-xs);font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:var(--space-md)">Contents</div>
+          <a href="#overview"   class="api-nav-item active" id="nav-overview">Overview</a>
+          <a href="#detect-text" class="api-nav-item" id="nav-text">Detect Text</a>
+          <a href="#detect-url"  class="api-nav-item" id="nav-url">Detect URL</a>
+          <a href="#detect-file" class="api-nav-item" id="nav-file">Detect File</a>
+          <a href="#history"     class="api-nav-item" id="nav-history">History</a>
+          <a href="#types"       class="api-nav-item" id="nav-types">Detection Types</a>
+          <a href="#response"    class="api-nav-item" id="nav-response">Response Format</a>
+        </nav>
+
+        <!-- API Content -->
+        <div class="animate-fade-up" style="animation-delay:0.15s">
+
+          <!-- Overview -->
+          <div class="api-section" id="overview">
+            <h2>Overview</h2>
+            <p style="font-size:var(--text-sm);margin-bottom:var(--space-lg)">
+              The FakeDetector API is a REST API running locally at <code style="background:var(--bg-tertiary);padding:2px 6px;border-radius:4px;font-size:var(--text-xs);color:var(--gold)">http://127.0.0.1:8000</code>.
+              All endpoints accept <code style="background:var(--bg-tertiary);padding:2px 6px;border-radius:4px;font-size:var(--text-xs)">multipart/form-data</code> and return <code style="background:var(--bg-tertiary);padding:2px 6px;border-radius:4px;font-size:var(--text-xs)">application/json</code>.
+            </p>
+
+            <div class="card" style="margin-bottom:var(--space-lg)">
+              <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-md)">
+                <span class="badge badge-success">● Online</span>
+                <span style="font-size:var(--text-sm);color:var(--text-secondary)">Base URL: <strong style="color:var(--text-primary)">http://127.0.0.1:8000</strong></span>
+              </div>
+              <div style="display:flex;align-items:center;gap:var(--space-md)">
+                <span class="badge badge-gold">Docs</span>
+                <a href="http://127.0.0.1:8000/api/docs" target="_blank" style="font-size:var(--text-sm);color:var(--gold)">http://127.0.0.1:8000/api/docs →</a>
+              </div>
+            </div>
+
+            <div class="code-block">
+              <span class="code-comment"># Health check</span><br>
+              curl http://127.0.0.1:8000/api/health<br><br>
+              <span class="code-comment"># Response</span><br>
+              {<span class="code-key">"status"</span>: <span class="code-string">"ok"</span>, <span class="code-key">"version"</span>: <span class="code-string">"1.0.0"</span>}
+            </div>
+          </div>
+
+          <!-- Detect Text -->
+          <div class="api-section" id="detect-text">
+            <h2>Detect Text</h2>
+            <div class="endpoint-card">
+              <div class="endpoint-header">
+                <span class="method-badge method-post">POST</span>
+                <span class="endpoint-path">/api/detect/text</span>
+              </div>
+              <div class="endpoint-body">
+                <p>Analyze plain text content for the specified detection type.</p>
+                <h3>Form Parameters</h3>
+                <table style="width:100%;border-collapse:collapse;font-size:var(--text-sm);margin-bottom:var(--space-lg)">
+                  <tr style="border-bottom:1px solid var(--border)">
+                    <th style="text-align:left;padding:var(--space-sm);color:var(--text-muted);font-size:var(--text-xs)">Field</th>
+                    <th style="text-align:left;padding:var(--space-sm);color:var(--text-muted);font-size:var(--text-xs)">Type</th>
+                    <th style="text-align:left;padding:var(--space-sm);color:var(--text-muted);font-size:var(--text-xs)">Description</th>
+                  </tr>
+                  <tr style="border-bottom:1px solid var(--border)">
+                    <td style="padding:var(--space-sm)"><code style="color:var(--gold)">text</code></td>
+                    <td style="padding:var(--space-sm);color:var(--text-muted)">string</td>
+                    <td style="padding:var(--space-sm);color:var(--text-muted)">The text content to analyze (min 20 chars)</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:var(--space-sm)"><code style="color:var(--gold)">detection_type</code></td>
+                    <td style="padding:var(--space-sm);color:var(--text-muted)">string</td>
+                    <td style="padding:var(--space-sm);color:var(--text-muted)">One of the detection type values (see Types)</td>
+                  </tr>
+                </table>
+                <h3>Example Request</h3>
+                <div class="code-block">
+                  <span class="code-comment"># cURL example</span><br>
+                  curl -X POST http://127.0.0.1:8000/api/detect/text \<br>
+                  &nbsp;&nbsp;-F <span class="code-string">"text=This article was written by an advanced AI language model..."</span> \<br>
+                  &nbsp;&nbsp;-F <span class="code-string">"detection_type=ai_content"</span>
+                  <span class="code-lang">curl</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detect URL -->
+          <div class="api-section" id="detect-url">
+            <h2>Detect URL</h2>
+            <div class="endpoint-card">
+              <div class="endpoint-header">
+                <span class="method-badge method-post">POST</span>
+                <span class="endpoint-path">/api/detect/url</span>
+              </div>
+              <div class="endpoint-body">
+                <p>Fetch and analyze the content at a given URL.</p>
+                <h3>Example Request</h3>
+                <div class="code-block">
+                  curl -X POST http://127.0.0.1:8000/api/detect/url \<br>
+                  &nbsp;&nbsp;-F <span class="code-string">"url=https://example.com/suspicious-article"</span> \<br>
+                  &nbsp;&nbsp;-F <span class="code-string">"detection_type=fake_news"</span>
+                  <span class="code-lang">curl</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detect File -->
+          <div class="api-section" id="detect-file">
+            <h2>Detect File</h2>
+            <div class="endpoint-card">
+              <div class="endpoint-header">
+                <span class="method-badge method-post">POST</span>
+                <span class="endpoint-path">/api/detect/file</span>
+              </div>
+              <div class="endpoint-body">
+                <p>Upload and analyze a file. Supports <strong>.txt</strong>, <strong>.pdf</strong>, and <strong>.docx</strong>.</p>
+                <h3>Example Request</h3>
+                <div class="code-block">
+                  curl -X POST http://127.0.0.1:8000/api/detect/file \<br>
+                  &nbsp;&nbsp;-F <span class="code-string">"file=@/path/to/document.pdf"</span> \<br>
+                  &nbsp;&nbsp;-F <span class="code-string">"detection_type=plagiarism"</span>
+                  <span class="code-lang">curl</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- History -->
+          <div class="api-section" id="history">
+            <h2>Scan History</h2>
+            <div class="endpoint-card" style="margin-bottom:var(--space-md)">
+              <div class="endpoint-header">
+                <span class="method-badge method-get">GET</span>
+                <span class="endpoint-path">/api/history</span>
+              </div>
+              <div class="endpoint-body">
+                <p>Retrieve scan history. Optional <code style="background:var(--bg-tertiary);padding:2px 6px;border-radius:4px;font-size:var(--text-xs)">?limit=50</code> parameter.</p>
+                <div class="code-block">
+                  curl http://127.0.0.1:8000/api/history?limit=20
+                  <span class="code-lang">curl</span>
+                </div>
+              </div>
+            </div>
+            <div class="endpoint-card" style="margin-bottom:var(--space-md)">
+              <div class="endpoint-header">
+                <span class="method-badge method-get">GET</span>
+                <span class="endpoint-path">/api/history/{id}</span>
+              </div>
+              <div class="endpoint-body">
+                <p>Retrieve a single scan result by ID.</p>
+              </div>
+            </div>
+            <div class="endpoint-card">
+              <div class="endpoint-header">
+                <span class="method-badge method-delete">DELETE</span>
+                <span class="endpoint-path">/api/history/{id}</span>
+              </div>
+              <div class="endpoint-body">
+                <p>Delete a scan from history.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detection Types -->
+          <div class="api-section" id="types">
+            <h2>Detection Types</h2>
+            <p style="font-size:var(--text-sm);margin-bottom:var(--space-lg)">Use these values for the <code style="background:var(--bg-tertiary);padding:2px 6px;border-radius:4px;font-size:var(--text-xs);color:var(--gold)">detection_type</code> parameter:</p>
+            <div class="code-block">
+              <span class="code-string">"ai_content"</span>      <span class="code-comment">// AI-generated text detection</span><br>
+              <span class="code-string">"plagiarism"</span>       <span class="code-comment">// Originality & plagiarism check</span><br>
+              <span class="code-string">"fake_news"</span>        <span class="code-comment">// Fake news & misinformation</span><br>
+              <span class="code-string">"fake_review"</span>      <span class="code-comment">// Fake/bot review detection</span><br>
+              <span class="code-string">"fake_profile"</span>     <span class="code-comment">// Fake social profile detection</span><br>
+              <span class="code-string">"fake_job"</span>         <span class="code-comment">// Scam job posting detection</span><br>
+              <span class="code-string">"phishing"</span>         <span class="code-comment">// Phishing email detection</span><br>
+              <span class="code-string">"code_plagiarism"</span>  <span class="code-comment">// Code plagiarism / AI code</span>
+            </div>
+          </div>
+
+          <!-- Response Format -->
+          <div class="api-section" id="response">
+            <h2>Response Format</h2>
+            <p style="font-size:var(--text-sm);margin-bottom:var(--space-lg)">All detection endpoints return the same structured JSON response:</p>
+            <div class="code-block">
+{<br>
+&nbsp;&nbsp;<span class="code-key">"detection_type"</span>: <span class="code-string">"ai_content"</span>,<br>
+&nbsp;&nbsp;<span class="code-key">"score"</span>: <span class="code-number">87</span>,         <span class="code-comment">// 0-100, higher = more fake/AI</span><br>
+&nbsp;&nbsp;<span class="code-key">"verdict"</span>: <span class="code-string">"Likely AI Generated"</span>,<br>
+&nbsp;&nbsp;<span class="code-key">"confidence"</span>: <span class="code-string">"High"</span>,  <span class="code-comment">// High | Medium | Low</span><br>
+&nbsp;&nbsp;<span class="code-key">"breakdown"</span>: {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-key">"ai_patterns_found"</span>: <span class="code-number">9</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-key">"human_patterns_found"</span>: <span class="code-number">2</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-key">"sentence_uniformity"</span>: <span class="code-number">85</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-key">"vocabulary_diversity"</span>: <span class="code-number">72</span><br>
+&nbsp;&nbsp;},<br>
+&nbsp;&nbsp;<span class="code-key">"highlights"</span>: [<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-string">"Repetitive sentence structure detected"</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-string">"Uniform paragraph length throughout"</span><br>
+&nbsp;&nbsp;],<br>
+&nbsp;&nbsp;<span class="code-key">"improvements"</span>: [<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-string">"Vary sentence length and structure"</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-string">"Add personal anecdotes and examples"</span><br>
+&nbsp;&nbsp;],<br>
+&nbsp;&nbsp;<span class="code-key">"raw_analysis"</span>: <span class="code-string">"The text shows strong AI generation patterns..."</span><br>
+}
+              <span class="code-lang">json</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script src="/static/js/navigation.js"></script>
+  <script>
+    // Active sidebar link on scroll
+    const sections = document.querySelectorAll('.api-section');
+    const navItems = document.querySelectorAll('.api-nav-item');
+
+    window.addEventListener('scroll', () => {
+      let current = '';
+      sections.forEach(section => {
+        if (window.scrollY >= section.offsetTop - 120) {
+          current = section.id;
+        }
+      });
+      navItems.forEach(item => {
+        item.classList.toggle('active', item.getAttribute('href') === '#' + current);
+      });
+    }, { passive: true });
+  </script>
+</body>
+</html>
